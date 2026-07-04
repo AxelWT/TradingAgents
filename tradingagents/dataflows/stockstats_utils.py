@@ -210,10 +210,19 @@ def load_ohlcv_routed(symbol: str, curr_date: str) -> pd.DataFrame:
     string — go through here so they get the same multi-vendor resilience
     as the string-returning tools.
 
-    Order: yfinance (``load_ohlcv``) first; on NoMarketDataError or a yfinance
-    rate limit, fall back to AKShare (``load_ohlcv_akshare``). If both fail,
-    raise the last NoMarketDataError so the caller surfaces "no data" rather
-    than fabricating a frame.
+    Order: yfinance (``load_ohlcv``) first; on NoMarketDataError / a yfinance
+    rate limit / any vendor failure, fall back to akshare
+    (``load_ohlcv_akshare``) then tushare (``load_ohlcv_tushare``, A-shares
+    only). If all fail, raise ``NoMarketDataError`` so the caller surfaces
+    "no data" rather than fabricating a frame or crashing with an opaque
+    transport error.
+
+    Like ``route_to_vendor``, each vendor's failure is logged but never
+    swallowed silently: a broken primary must be visible in logs (#989) so
+    a fallback's success (or the no-data verdict) can't hide it. Transient
+    transport errors (``ConnectionError`` / ``Timeout``) are absorbed here
+    rather than propagated — the vendor's own retry wrapper already had its
+    chance, and the next vendor may succeed.
 
     This exists because ``market_data_validator`` and other DataFrame
     consumers previously called ``load_ohlcv`` directly, bypassing the vendor
@@ -221,6 +230,8 @@ def load_ohlcv_routed(symbol: str, curr_date: str) -> pd.DataFrame:
     alternative vendor could have served the symbol.
     """
     last_error: Exception | None = None
+
+    # yfinance (cached, fastest, widest coverage).
     try:
         return load_ohlcv(symbol, curr_date)
     except NoMarketDataError as e:
@@ -229,19 +240,62 @@ def load_ohlcv_routed(symbol: str, curr_date: str) -> pd.DataFrame:
     except VendorRateLimitError as e:
         last_error = e
         logger.info("yfinance load_ohlcv rate-limited for %s; trying akshare", symbol)
+    except Exception as e:
+        # A genuine transport/parse failure (not a clean "no data"). Log it
+        # so a broken yfinance primary can't hide behind a fallback, then try
+        # the next vendor — the router's generic except does the same (#989).
+        last_error = e
+        logger.warning("yfinance load_ohlcv failed for %s: %s", symbol, e)
 
+    # akshare (keyless, A-share + HK + US).
     # Lazy import to avoid a circular dependency: akshare_impl imports
     # _clean_dataframe / _assert_ohlcv_not_stale from this module.
     from .akshare_impl import load_ohlcv_akshare
 
     try:
         return load_ohlcv_akshare(symbol, curr_date)
+    except NoMarketDataError as e:
+        last_error = e
+        logger.info("akshare load_ohlcv reported no data for %s; trying tushare", symbol)
+    except VendorRateLimitError as e:
+        last_error = e
+        logger.info("akshare load_ohlcv rate-limited for %s; trying tushare", symbol)
+    except Exception as e:
+        # akshare's Eastmoney/Sina backend occasionally drops connections
+        # after exhausting its own retries; fall through to tushare rather
+        # than propagating a ConnectionError that crashes the caller.
+        last_error = e
+        logger.warning("akshare load_ohlcv failed for %s: %s", symbol, e)
+
+    # tushare (token-gated, A-share only). Non-A-share symbols raise
+    # NoMarketDataError here, which is caught above and surfaces as the final
+    # no-data verdict.
+    from .tushare_impl import load_ohlcv_tushare
+
+    try:
+        return load_ohlcv_tushare(symbol, curr_date)
     except NoMarketDataError:
-        # Both vendors exhausted — surface the no-data verdict so the caller
-        # can emit its sentinel rather than crashing with an opaque error.
+        # All three vendors exhausted — surface the no-data verdict so the
+        # caller can emit its sentinel rather than crashing with an opaque
+        # error. Prefer a prior NoMarketDataError (clean "no rows" signal)
+        # over a transport/limit failure so the message reflects "genuinely
+        # unavailable" rather than "we hit a transient blip".
         if isinstance(last_error, NoMarketDataError):
             raise
-        raise NoMarketDataError(symbol, symbol, "no vendor returned OHLCV data")
+        raise NoMarketDataError(
+            symbol, symbol, f"no vendor returned OHLCV data: {last_error}"
+        ) from last_error
+    except VendorRateLimitError as e:
+        # tushare rate-limited and there's no further fallback. Surface a
+        # clean NoMarketDataError so DataFrame callers (which don't have
+        # route_to_vendor's sentinel logic) degrade gracefully.
+        raise NoMarketDataError(
+            symbol, symbol, f"all vendors exhausted (tushare rate-limited): {e}"
+        ) from e
+    except Exception as e:
+        # tushare transport/parse failure with no further fallback.
+        logger.warning("tushare load_ohlcv failed for %s: %s", symbol, e)
+        raise NoMarketDataError(symbol, symbol, f"no vendor returned OHLCV data: {e}") from e
 
 
 def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFrame:

@@ -135,12 +135,14 @@ DEFAULT_CONFIG = _apply_env_overrides(
         # e.g. "yfinance,alpha_vantage". "default" uses all available vendors.
         "data_vendors": {
             # Price data: yfinance first (fastest, cached), akshare second
-            # (keyless, no daily cap — covers A-shares + US), alpha_vantage last
+            # (keyless, no daily cap — covers A-shares + US), tushare third
+            # (token-gated, best A-share quality), alpha_vantage last
             # (25 req/day free tier, emergency only).
-            "core_stock_apis": "yfinance,akshare,alpha_vantage",
-            "technical_indicators": "yfinance,akshare,alpha_vantage",
-            # Fundamentals/news: AKShare coverage is weak for US, keep 2-vendor.
-            "fundamental_data": "yfinance,alpha_vantage",
+            "core_stock_apis": "yfinance,akshare,tushare,alpha_vantage",
+            "technical_indicators": "yfinance,akshare,tushare,alpha_vantage",
+            # Fundamentals/news: AKShare coverage is weak for US, keep 3-vendor.
+            # Tushare serves A-share fundamentals (PE/PB/financials).
+            "fundamental_data": "yfinance,tushare,alpha_vantage",
             "news_data": "yfinance,alpha_vantage",
             "macro_data": "fred",  # Options: fred (needs FRED_API_KEY)
             "prediction_markets": "polymarket",  # Options: polymarket (keyless)

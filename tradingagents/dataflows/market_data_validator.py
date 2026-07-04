@@ -15,6 +15,7 @@ from collections.abc import Iterable
 import pandas as pd
 from stockstats import wrap
 
+from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.stockstats_utils import load_ohlcv_routed
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
@@ -76,7 +77,38 @@ def build_verified_market_snapshot(
     look_back_days: int = 30,
     indicators: Iterable[str] | None = None,
 ) -> str:
-    """Render a ground-truth snapshot: latest OHLCV row, indicators, recent closes."""
+    """Render a ground-truth snapshot: latest OHLCV row, indicators, recent closes.
+
+    Degrades to a ``NO_DATA_AVAILABLE:`` sentinel string (matching
+    ``interface.route_to_vendor``'s convention) when every vendor reports no
+    data, so the tool caller gets one clear "unavailable" signal instead of a
+    crash that aborts the whole analysis task. A prior fix routed this path
+    through ``load_ohlcv_routed`` for multi-vendor resilience; this catches
+    the case where all vendors are exhausted so the tool still returns a
+    usable string rather than raising.
+    """
+    try:
+        df = _verified_rows(symbol, curr_date)
+    except NoMarketDataError as e:
+        # All vendors exhausted — return the same sentinel convention
+        # `route_to_vendor` uses so the agent treats it as "unavailable"
+        # instead of the LangChain ToolNode crashing the task.
+        reason = f" ({e.detail})" if e.detail else ""
+        return (
+            f"NO_DATA_AVAILABLE: No usable market data for '{symbol}' from any "
+            f"configured vendor{reason}. The symbol may be invalid, delisted, "
+            f"not covered, or all vendors returned stale data. Do not estimate "
+            f"or fabricate values — report that data is unavailable for this symbol."
+        )
+    except ValueError as e:
+        # _verified_rows raises ValueError when the frame is non-empty but
+        # has no rows on/before curr_date (e.g. a brand-new listing). Degrade
+        # to the same sentinel so the tool never crashes the task.
+        return (
+            f"NO_DATA_AVAILABLE: No usable market data for '{symbol}' on or before "
+            f"{curr_date} ({e}). Do not estimate or fabricate values — report "
+            f"that data is unavailable for this symbol and date."
+        )
     # `df` keeps the original capitalized OHLCV columns (Open/High/Low/Close/
     # Volume); stockstats `wrap()` lowercases columns and adds indicator
     # columns, so read raw prices from `df` and indicators from `stock_df`.

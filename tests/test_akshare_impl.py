@@ -474,12 +474,23 @@ class LoadOhlcvRoutedTests(unittest.TestCase):
         mock_ak = mock.Mock()
         mock_ak.stock_zh_a_hist.return_value = pd.DataFrame()
 
+        # 999999 is a 6-digit code -> tushare would be tried as a third
+        # fallback. Patch load_ohlcv_tushare to also raise NoMarketDataError
+        # so all three vendors are exhausted and the routed loader surfaces
+        # the no-data verdict.
+        def _tushare_no_data(symbol, curr_date):
+            raise NoMarketDataError(symbol, symbol, "tushare returned no rows")
+
         with (
             mock.patch(
                 "tradingagents.dataflows.stockstats_utils.load_ohlcv",
                 side_effect=_yf_no_data,
             ),
             mock.patch.object(akshare_impl, "_get_akshare", return_value=mock_ak),
+            mock.patch(
+                "tradingagents.dataflows.tushare_impl.load_ohlcv_tushare",
+                side_effect=_tushare_no_data,
+            ),
         ):
             with self.assertRaises(NoMarketDataError):
                 load_ohlcv_routed("999999", "2026-01-15")

@@ -51,6 +51,14 @@ bedrock = [
 akshare = [
     "akshare>=1.12",
 ]
+# Tushare Pro data vendor (A-share OHLCV + financial statements; best A-share
+# quality, token-gated). Optional so the core install stays lean: the vendor
+# is imported lazily and the router skips it gracefully if absent or if
+# TUSHARE_API_KEY is unset.
+# pip install "tradingagents[tushare]".
+tushare = [
+    "tushare>=1.4.2",
+]
 
 [project.scripts]
 tradingagents = "cli.main:app"

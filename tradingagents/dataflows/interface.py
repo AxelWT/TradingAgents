@@ -1,5 +1,9 @@
 import logging
 
+from .akshare_impl import (
+    get_indicators as get_akshare_indicators,
+    get_stock_data as get_akshare_stock,
+)
 from .alpha_vantage import (
     get_balance_sheet as get_alpha_vantage_balance_sheet,
     get_cashflow as get_alpha_vantage_cashflow,
@@ -11,8 +15,6 @@ from .alpha_vantage import (
     get_news as get_alpha_vantage_news,
     get_stock as get_alpha_vantage_stock,
 )
-from .akshare_impl import get_indicators as get_akshare_indicators
-from .akshare_impl import get_stock_data as get_akshare_stock
 from .config import get_config
 from .errors import (
     NoMarketDataError,
@@ -21,6 +23,14 @@ from .errors import (
 )
 from .fred import get_macro_data as get_fred_macro_data
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
+from .tushare_impl import (
+    get_balance_sheet as get_tushare_balance_sheet,
+    get_cashflow as get_tushare_cashflow,
+    get_fundamentals as get_tushare_fundamentals,
+    get_income_statement as get_tushare_income_statement,
+    get_indicators as get_tushare_indicators,
+    get_stock_data as get_tushare_stock,
+)
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
     get_cashflow as get_yfinance_cashflow,
@@ -70,6 +80,7 @@ TOOLS_CATEGORIES = {
 VENDOR_LIST = [
     "yfinance",
     "akshare",
+    "tushare",
     "fred",
     "polymarket",
     "alpha_vantage",
@@ -88,29 +99,35 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "akshare": get_akshare_stock,
+        "tushare": get_tushare_stock,
         "yfinance": get_YFin_data_online,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "akshare": get_akshare_indicators,
+        "tushare": get_tushare_indicators,
         "yfinance": get_stock_stats_indicators_window,
     },
     # fundamental_data
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
+        "tushare": get_tushare_fundamentals,
         "yfinance": get_yfinance_fundamentals,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
+        "tushare": get_tushare_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
+        "tushare": get_tushare_cashflow,
         "yfinance": get_yfinance_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
+        "tushare": get_tushare_income_statement,
         "yfinance": get_yfinance_income_statement,
     },
     # news_data
