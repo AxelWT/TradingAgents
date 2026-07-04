@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { analysisApi, AnalysisTask } from '../api/analysis'
-import { Play, FileText, TrendingUp, Clock, AlertCircle } from 'lucide-react'
+import { Play, FileText, TrendingUp, Clock, AlertCircle, Trash2 } from 'lucide-react'
 
 export default function Dashboard() {
   const [recentTasks, setRecentTasks] = useState<AnalysisTask[]>([])
@@ -20,6 +20,22 @@ export default function Dashboard() {
       // ignore
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm('确定删除该调研记录？此操作不可恢复。')) return
+    try {
+      await analysisApi.delete(taskId)
+      await loadRecentTasks()
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) {
+        window.alert('该调研正在运行中，无法删除')
+      } else {
+        window.alert('删除失败，请稍后重试')
+      }
     }
   }
 
@@ -126,6 +142,18 @@ export default function Dashboard() {
                   {task.error_message && (
                     <AlertCircle className="w-4 h-4 text-red-400" />
                   )}
+                  <button
+                    onClick={(e) => handleDelete(task.id, e)}
+                    disabled={task.status === 'pending' || task.status === 'running'}
+                    className="p-1.5 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500"
+                    title={
+                      task.status === 'pending' || task.status === 'running'
+                        ? '运行中无法删除'
+                        : '删除该调研记录'
+                    }
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}

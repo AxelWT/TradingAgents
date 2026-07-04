@@ -97,6 +97,31 @@ def get_analysis(
     return _task_to_response(task)
 
 
+@router.delete("/{task_id}", status_code=204)
+def delete_analysis(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task = (
+        db.query(AnalysisTask)
+        .filter(
+            AnalysisTask.id == task_id,
+            AnalysisTask.user_id == current_user.id,
+        )
+        .first()
+    )
+    if task is None:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+    if task.status in ("pending", "running"):
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete a running analysis",
+        )
+    db.delete(task)
+    db.commit()
+
+
 @router.websocket("/ws/{task_id}")
 async def analysis_websocket(websocket: WebSocket, task_id: str):
     await websocket.accept()

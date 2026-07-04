@@ -20,4 +20,8 @@ export const reportsApi = {
     })
     return data
   },
+
+  delete: async (taskId: string): Promise<void> => {
+    await api.delete(`/api/analysis/${taskId}`)
+  },
 }

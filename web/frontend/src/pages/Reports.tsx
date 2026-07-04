@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { reportsApi } from '../api/reports'
 import { AnalysisTask } from '../api/analysis'
-import { FileText, Download, Search, TrendingUp } from 'lucide-react'
+import { FileText, Download, Search, TrendingUp, Trash2 } from 'lucide-react'
 
 export default function Reports() {
   const [tasks, setTasks] = useState<AnalysisTask[]>([])
@@ -48,6 +48,23 @@ export default function Reports() {
       URL.revokeObjectURL(url)
     } catch {
       // ignore
+    }
+  }
+
+  const handleDelete = async (taskId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm('确定删除该报告？此操作不可恢复。')) return
+    try {
+      await reportsApi.delete(taskId)
+      await loadReports()
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) {
+        window.alert('该调研正在运行中，无法删除')
+      } else {
+        window.alert('删除失败，请稍后重试')
+      }
     }
   }
 
@@ -134,6 +151,13 @@ export default function Reports() {
                   title="Download report"
                 >
                   <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => handleDelete(task.id, e)}
+                  className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                  title="Delete report"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </Link>

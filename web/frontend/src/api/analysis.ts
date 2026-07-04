@@ -55,4 +55,8 @@ export const analysisApi = {
     const { data } = await api.get(`/api/analysis/${taskId}`)
     return data
   },
+
+  delete: async (taskId: string): Promise<void> => {
+    await api.delete(`/api/analysis/${taskId}`)
+  },
 }
