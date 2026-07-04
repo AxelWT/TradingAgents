@@ -9,16 +9,22 @@ export default function Reports() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  useEffect(() => {
     loadReports()
-  }, [page, search])
+  }, [page, debouncedSearch])
 
   const loadReports = async () => {
     setLoading(true)
     try {
-      const resp = await reportsApi.list(page, 20, search || undefined)
+      const resp = await reportsApi.list(page, 20, debouncedSearch || undefined)
       setTasks(resp.tasks)
       setTotal(resp.total)
     } catch {

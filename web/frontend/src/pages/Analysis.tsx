@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { analysisApi } from '../api/analysis'
 import { useAnalysisStore } from '../stores/analysisStore'
@@ -11,9 +11,36 @@ export default function Analysis() {
   const { taskId: existingTaskId } = useParams()
   const navigate = useNavigate()
   const [showDashboard, setShowDashboard] = useState(!!existingTaskId)
-  const store = useAnalysisStore()
 
-  useWebSocket(store.taskId)
+  const taskId = useAnalysisStore((s) => s.taskId)
+  const startAnalysis = useAnalysisStore((s) => s.startAnalysis)
+  const reset = useAnalysisStore((s) => s.reset)
+
+  useWebSocket(taskId)
+
+  useEffect(() => {
+    if (existingTaskId) {
+      startAnalysis(existingTaskId)
+      setShowDashboard(true)
+      analysisApi
+        .get(existingTaskId)
+        .then((task) => {
+          if (task.status === 'completed' || task.status === 'failed') {
+            useAnalysisStore.setState({
+              status: task.status,
+              signal: task.signal,
+              finalReport: task.final_report,
+              error: task.error_message,
+              reportSections: task.agent_reports || {},
+            })
+          }
+        })
+        .catch((err) => console.error('Failed to load task:', err))
+    } else {
+      reset()
+      setShowDashboard(false)
+    }
+  }, [existingTaskId, startAnalysis, reset])
 
   const handleSubmit = async (config: {
     ticker: string
@@ -30,18 +57,9 @@ export default function Analysis() {
     openai_reasoning_effort?: string
     anthropic_effort?: string
   }) => {
-    try {
-      const task = await analysisApi.create(config)
-      store.startAnalysis(task.id)
-      setShowDashboard(true)
-    } catch (err) {
-      console.error('Failed to create analysis:', err)
-    }
-  }
-
-  if (existingTaskId && !store.taskId) {
-    store.startAnalysis(existingTaskId)
-    if (!showDashboard) setShowDashboard(true)
+    const task = await analysisApi.create(config)
+    startAnalysis(task.id)
+    setShowDashboard(true)
   }
 
   return (
@@ -56,8 +74,8 @@ export default function Analysis() {
         <h1 className="text-2xl font-bold text-white">
           {showDashboard ? 'Analysis Running' : 'New Analysis'}
         </h1>
-        {store.taskId && showDashboard && (
-          <span className="text-sm text-gray-500 ml-auto">Task: {store.taskId.slice(0, 8)}...</span>
+        {taskId && showDashboard && (
+          <span className="text-sm text-gray-500 ml-auto">Task: {taskId.slice(0, 8)}...</span>
         )}
       </div>
 

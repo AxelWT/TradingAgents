@@ -21,6 +21,7 @@ server {
     }
 
     location /ws/ {
+        rewrite ^/ws/(.*)$ /api/analysis/ws/$1 break;
         proxy_pass http://backend:8000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

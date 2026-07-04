@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]

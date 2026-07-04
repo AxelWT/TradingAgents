@@ -9,7 +9,7 @@ export default function MessageFeed() {
     ...messages.map((m) => ({ ...m, kind: 'message' as const })),
     ...toolCalls.map((t) => ({ ...t, kind: 'tool' as const })),
   ]
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    .sort((a, b) => a.seq - b.seq)
     .slice(-50)
 
   return (

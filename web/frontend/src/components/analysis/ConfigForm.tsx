@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 const LLM_PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
@@ -38,7 +38,7 @@ interface ConfigFormProps {
     google_thinking_level?: string
     openai_reasoning_effort?: string
     anthropic_effort?: string
-  }) => void
+  }) => void | Promise<void>
 }
 
 export default function ConfigForm({ onSubmit }: ConfigFormProps) {
@@ -49,6 +49,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
   const [llmProvider, setLlmProvider] = useState('openai')
   const [outputLanguage, setOutputLanguage] = useState('English')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const toggleAnalyst = (value: string) => {
     setAnalysts((prev) =>
@@ -59,19 +60,33 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    onSubmit({
-      ticker,
-      trade_date: tradeDate,
-      asset_type: 'stock',
-      analysts,
-      research_depth: researchDepth,
-      llm_provider: llmProvider,
-      output_language: outputLanguage,
-    })
+    setError('')
+    try {
+      await onSubmit({
+        ticker,
+        trade_date: tradeDate,
+        asset_type: 'stock',
+        analysts,
+        research_depth: researchDepth,
+        llm_provider: llmProvider,
+        output_language: outputLanguage,
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to start analysis'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Ticker Symbol <span className="text-red-400">*</span>

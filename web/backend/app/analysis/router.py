@@ -138,12 +138,19 @@ async def analysis_websocket(websocket: WebSocket, task_id: str):
 
     logger.info("WebSocket connected for task %s", task_id)
 
+    existing = manager.active.get(task_id)
+    if existing is not None and existing is not websocket:
+        try:
+            await existing.close(code=4000)
+        except Exception:
+            pass
     manager.active[task_id] = websocket
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.active.pop(task_id, None)
+        if manager.active.get(task_id) is websocket:
+            manager.active.pop(task_id, None)
         logger.info("WebSocket disconnected for task %s", task_id)
 
 

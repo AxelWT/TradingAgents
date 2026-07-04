@@ -9,13 +9,29 @@ export interface WSMessage {
   [key: string]: unknown
 }
 
+interface FeedItem {
+  seq: number
+  ts: number
+  timestamp: string
+}
+
+export interface MessageEntry extends FeedItem {
+  type: string
+  content: string
+}
+
+export interface ToolCallEntry extends FeedItem {
+  tool: string
+  args: unknown
+}
+
 interface AnalysisState {
   taskId: string | null
   status: string
   agentStatus: AgentStatus
   reportSections: Record<string, string>
-  messages: Array<{ timestamp: string; type: string; content: string }>
-  toolCalls: Array<{ timestamp: string; tool: string; args: unknown }>
+  messages: MessageEntry[]
+  toolCalls: ToolCallEntry[]
   stats: {
     elapsed_seconds: number
     reports_done: number
@@ -30,7 +46,9 @@ interface AnalysisState {
   processWSMessage: (msg: WSMessage) => void
 }
 
-export const useAnalysisStore = create<AnalysisState>((set, get) => ({
+let _seq = 0
+
+export const useAnalysisStore = create<AnalysisState>((set) => ({
   taskId: null,
   status: 'idle',
   agentStatus: {},
@@ -43,6 +61,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   error: null,
 
   startAnalysis: (taskId) => {
+    _seq = 0
     set({
       taskId,
       status: 'running',
@@ -58,6 +77,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   },
 
   reset: () => {
+    _seq = 0
     set({
       taskId: null,
       status: 'idle',
@@ -73,8 +93,18 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   },
 
   processWSMessage: (msg) => {
-    const timestamp = new Date().toLocaleTimeString()
+    const now = Date.now()
+    const timestamp = new Date(now).toLocaleTimeString()
+    const seq = ++_seq
     switch (msg.type) {
+      case 'agents_init': {
+        const init: AgentStatus = {}
+        for (const name of (msg.agents as string[]) || []) {
+          init[name] = 'pending'
+        }
+        set((s) => ({ agentStatus: { ...init, ...s.agentStatus } }))
+        break
+      }
       case 'agent_status':
         set((s) => ({
           agentStatus: {
@@ -87,7 +117,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
         set((s) => ({
           toolCalls: [
             ...s.toolCalls,
-            { timestamp, tool: msg.tool as string, args: msg.args },
+            { seq, ts: now, timestamp, tool: msg.tool as string, args: msg.args },
           ],
         }))
         break
@@ -103,7 +133,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
         set((s) => ({
           messages: [
             ...s.messages,
-            { timestamp, type: msg.msg_type as string, content: msg.content as string },
+            { seq, ts: now, timestamp, type: msg.msg_type as string, content: msg.content as string },
           ],
         }))
         break

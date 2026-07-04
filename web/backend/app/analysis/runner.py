@@ -84,6 +84,14 @@ class WebSocketCallbackAdapter:
             }
         )
 
+    def on_agents_init(self, agent_names: list[str]):
+        self._push_sync(
+            {
+                "type": "agents_init",
+                "agents": list(agent_names),
+            }
+        )
+
     def on_agent_finish(self, agent_name: str):
         self._push_sync(
             {
@@ -180,6 +188,7 @@ def run_analysis_task(
     task_id: str, config: dict, user_id: str, loop: asyncio.AbstractEventLoop | None = None
 ):
     db: Session = _db_mod.SessionLocal()
+    adapter: WebSocketCallbackAdapter | None = None
     try:
         task = db.query(AnalysisTask).filter(AnalysisTask.id == task_id).first()
         if task is None:
@@ -268,10 +277,7 @@ def run_analysis_task(
             all_agent_names.append(ANALYST_AGENT_NAMES[a])
         for team_agents in FIXED_AGENTS.values():
             all_agent_names.extend(team_agents)
-        for name in all_agent_names:
-            adapter.on_agent_start.__wrapped__(name) if hasattr(
-                adapter.on_agent_start, "__wrapped__"
-            ) else None
+        adapter.on_agents_init(all_agent_names)
 
         first_analyst = ANALYST_AGENT_NAMES.get(selected_analysts[0], "Market Analyst")
         adapter.on_agent_start(first_analyst)
@@ -397,8 +403,10 @@ def run_analysis_task(
         try:
             signal_result = graph.process_signal(final_state.get("final_trade_decision", ""))
             signal = signal_result if isinstance(signal_result, str) else str(signal_result)
+            rating = signal
         except Exception:
             signal = "N/A"
+            rating = "N/A"
 
         final_report = final_state.get("final_trade_decision", "")
         agent_reports = {k: v for k, v in report_sections.items() if v}
@@ -417,13 +425,20 @@ def run_analysis_task(
         adapter.on_complete(signal, rating, final_report, agent_reports, task.token_usage)
 
     except Exception as e:
-        task = db.query(AnalysisTask).filter(AnalysisTask.id == task_id).first()
-        if task:
-            task.status = "failed"
-            task.error_message = str(e)
-            task.completed_at = datetime.now(timezone.utc)
-            db.commit()
-        adapter.on_error(str(e))
+        logger.exception("Analysis task %s failed", task_id)
+        try:
+            task = db.query(AnalysisTask).filter(AnalysisTask.id == task_id).first()
+            if task:
+                task.status = "failed"
+                task.error_message = str(e)
+                task.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception:
+            logger.exception("Failed to mark task %s as failed", task_id)
+        if adapter is not None:
+            adapter.on_error(str(e))
+        else:
+            logger.error("Task %s failed before adapter was initialized: %s", task_id, e)
     finally:
         db.close()
 

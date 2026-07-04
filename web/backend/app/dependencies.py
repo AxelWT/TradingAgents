@@ -14,6 +14,38 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 
+def upsert_user(db: Session, user_id: str, email: str) -> User:
+    """Create or fetch a local User row for a Supabase user.
+
+    Looks up by ``user_id`` first; if not found, checks whether the email is
+    already taken by a *different* user (in which case that existing user is
+    returned rather than silently merging accounts). Otherwise inserts a new row.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is not None:
+        return user
+
+    existing_email = db.query(User).filter(User.email == email).first()
+    if existing_email is not None and existing_email.id != user_id:
+        logger.warning(
+            "Email %s already used by user %s, returning existing instead of creating %s",
+            email,
+            existing_email.id,
+            user_id,
+        )
+        return existing_email
+
+    user = User(id=user_id, email=email)
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        user = db.query(User).filter(User.id == user_id).first()
+    return user
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
@@ -33,15 +65,4 @@ async def get_current_user(
     user_id = user_resp.user.id
     email = user_resp.user.email or ""
 
-    user = db.query(User).filter((User.id == user_id) | (User.email == email)).first()
-    if user is None:
-        user = User(id=user_id, email=email)
-        try:
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        except IntegrityError:
-            db.rollback()
-            user = db.query(User).filter(User.email == email).first()
-
-    return user
+    return upsert_user(db, user_id, email)
