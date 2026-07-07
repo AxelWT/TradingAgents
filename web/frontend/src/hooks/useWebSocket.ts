@@ -21,7 +21,7 @@ export function useWebSocket(taskId: string | null) {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const wsUrl = `${protocol}//${host}/ws/${taskId}?token=${token}`
+    const wsUrl = `${protocol}//${host}/api/analysis/ws/${taskId}?token=${token}`
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 

@@ -13,4 +13,7 @@ node_modules
 results
 eval_results
 Dockerfile
+Dockerfile.prod
 docker-compose.yml
+docker-compose.prod.yml
+.github

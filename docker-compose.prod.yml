@@ -1,0 +1,16 @@
+services:
+  tradingagents:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/tradingagents:latest
+    container_name: tradingagents
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////home/appuser/.tradingagents/web.db
+    volumes:
+      - tradingagents_data:/home/appuser/.tradingagents
+    ports:
+      - "80:8000"
+    restart: unless-stopped
+
+volumes:
+  tradingagents_data:
