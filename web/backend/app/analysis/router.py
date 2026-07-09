@@ -124,43 +124,35 @@ def delete_analysis(
 
 @router.websocket("/ws/{task_id}")
 async def analysis_websocket(websocket: WebSocket, task_id: str):
-    await websocket.accept()
-
+    # Validate token BEFORE accepting the WebSocket handshake.
+    # close() before accept() rejects the upgrade request entirely.
     token = websocket.query_params.get("token")
     if not token:
-        await websocket.send_json({"type": "error", "message": "Missing token"})
         await websocket.close(code=4001)
         return
 
     try:
         from app.dependencies import get_current_user as _get_user
+        from fastapi.security import HTTPAuthorizationCredentials
         import app.db.database as _db_mod
 
         db = _db_mod.SessionLocal()
         try:
-            from fastapi.security import HTTPAuthorizationCredentials
-
             creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
             user = await _get_user(creds, db)
+            task = db.query(AnalysisTask).filter(AnalysisTask.id == task_id).first()
         finally:
             db.close()
     except Exception as e:
         logger.warning("WebSocket auth failed: %s", e)
-        await websocket.send_json({"type": "error", "message": "Invalid token"})
         await websocket.close(code=4001)
         return
 
-    import app.db.database as _db_mod
-
-    db = _db_mod.SessionLocal()
-    task = db.query(AnalysisTask).filter(AnalysisTask.id == task_id).first()
-    db.close()
-
     if task is None or task.user_id != user.id:
-        await websocket.send_json({"type": "error", "message": "Forbidden"})
         await websocket.close(code=4003)
         return
 
+    await websocket.accept()
     logger.info("WebSocket connected for task %s", task_id)
 
     existing = manager.active.get(task_id)
