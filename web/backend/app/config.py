@@ -25,10 +25,9 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./tradingagents_web.db"
 
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
-    SUPABASE_SERVICE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = ""
+    JWT_SECRET_KEY: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 1440
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 

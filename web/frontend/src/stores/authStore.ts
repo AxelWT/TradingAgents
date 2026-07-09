@@ -15,10 +15,37 @@ interface AuthState {
   initialize: () => void
 }
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (!payload.exp) return false
+    return Date.now() >= payload.exp * 1000 - 30_000
+  } catch {
+    return true
+  }
+}
+
+function loadInitialState(): Pick<AuthState, 'user' | 'token' | 'isAuthenticated'> {
+  const token = localStorage.getItem('access_token')
+  const userStr = localStorage.getItem('user')
+  if (token && userStr) {
+    if (isTokenExpired(token)) {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('user')
+      return { user: null, token: null, isAuthenticated: false }
+    }
+    try {
+      return { user: JSON.parse(userStr), token, isAuthenticated: true }
+    } catch {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('user')
+    }
+  }
+  return { user: null, token: null, isAuthenticated: false }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  ...loadInitialState(),
 
   setAuth: (user, token) => {
     localStorage.setItem('access_token', token)
@@ -33,16 +60,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initialize: () => {
-    const token = localStorage.getItem('access_token')
-    const userStr = localStorage.getItem('user')
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        set({ user, token, isAuthenticated: true })
-      } catch {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('user')
-      }
-    }
+    set(loadInitialState())
   },
 }))

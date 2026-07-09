@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
+import Select from '../ui/Select'
 
 const LLM_PROVIDERS = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'google', label: 'Google' },
   { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'ollama', label: 'Ollama' },
 ]
 
 const ANALYST_OPTIONS = [
@@ -21,6 +18,11 @@ const DEPTH_OPTIONS = [
   { value: 2, label: 'Standard (2 rounds)' },
   { value: 3, label: 'Deep (3 rounds)' },
   { value: 4, label: 'Very Deep (4 rounds)' },
+]
+
+const OUTPUT_LANGUAGES = [
+  { value: 'Chinese', label: 'Chinese' },
+  { value: 'English', label: 'English' },
 ]
 
 interface ConfigFormProps {
@@ -46,8 +48,8 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
   const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0])
   const [analysts, setAnalysts] = useState<string[]>(['market', 'social', 'news', 'fundamentals'])
   const [researchDepth, setResearchDepth] = useState(2)
-  const [llmProvider, setLlmProvider] = useState('openai')
-  const [outputLanguage, setOutputLanguage] = useState('English')
+  const [llmProvider, setLlmProvider] = useState('deepseek')
+  const [outputLanguage, setOutputLanguage] = useState('Chinese')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -154,31 +156,20 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">LLM Provider</label>
-        <select
+        <Select
           value={llmProvider}
-          onChange={(e) => setLlmProvider(e.target.value)}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-        >
-          {LLM_PROVIDERS.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={LLM_PROVIDERS}
+          onChange={setLlmProvider}
+        />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Output Language</label>
-        <select
+        <Select
           value={outputLanguage}
-          onChange={(e) => setOutputLanguage(e.target.value)}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-        >
-          <option value="English">English</option>
-          <option value="Chinese">Chinese</option>
-          <option value="Japanese">Japanese</option>
-          <option value="Spanish">Spanish</option>
-        </select>
+          options={OUTPUT_LANGUAGES}
+          onChange={setOutputLanguage}
+        />
       </div>
 
       <button

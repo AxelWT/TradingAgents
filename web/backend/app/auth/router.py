@@ -1,100 +1,54 @@
-import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.auth.schemas import LoginRequest, RegisterRequest, AuthResponse, UserInfo
-from app.auth.supabase_client import get_supabase_client
-from app.dependencies import get_current_user, upsert_user
+from app.auth.security import hash_password, verify_password, create_access_token
+from app.dependencies import get_current_user
 from app.db.database import get_db
 from app.db.models import User
-from supabase import Client
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=AuthResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    sb: Client = get_supabase_client()
-    try:
-        resp = sb.auth.sign_up(
-            {
-                "email": req.email,
-                "password": req.password,
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing is not None:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    if resp.user is None:
-        raise HTTPException(status_code=400, detail="Registration failed")
+    user = User(
+        id=str(uuid.uuid4()),
+        email=req.email,
+        password_hash=hash_password(req.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
-    if resp.session is None:
-        try:
-            login_resp = sb.auth.sign_in_with_password(
-                {"email": req.email, "password": req.password}
-            )
-            if login_resp.session is not None:
-                user_id = login_resp.user.id
-                db_user = upsert_user(db, user_id, req.email)
-                return AuthResponse(
-                    access_token=login_resp.session.access_token,
-                    user=UserInfo(id=user_id, email=req.email),
-                )
-        except Exception as e:
-            logger.warning("Post-registration login failed: %s", e)
-        raise HTTPException(
-            status_code=400,
-            detail="Registration succeeded but session is unavailable. Please confirm your email and try logging in.",
-        )
-
-    user_id = resp.user.id
-    upsert_user(db, user_id, req.email)
-
+    token = create_access_token(user.id)
     return AuthResponse(
-        access_token=resp.session.access_token,
-        user=UserInfo(id=user_id, email=req.email),
+        access_token=token,
+        user=UserInfo(id=user.id, email=user.email, display_name=user.display_name),
     )
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    sb: Client = get_supabase_client()
-    try:
-        resp = sb.auth.sign_in_with_password(
-            {
-                "email": req.email,
-                "password": req.password,
-            }
-        )
-    except Exception as e:
-        logger.warning("Login failed for %s: %s", req.email, e)
+    user = db.query(User).filter(User.email == req.email).first()
+    if user is None or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    if resp.user is None:
-        raise HTTPException(status_code=401, detail="Login failed")
-
-    if resp.session is None:
-        raise HTTPException(status_code=401, detail="Login failed: no session returned")
-
-    user_id = resp.user.id
-    db_user = upsert_user(db, user_id, req.email)
-
+    token = create_access_token(user.id)
     return AuthResponse(
-        access_token=resp.session.access_token,
-        user=UserInfo(id=user_id, email=db_user.email, display_name=db_user.display_name),
+        access_token=token,
+        user=UserInfo(id=user.id, email=user.email, display_name=user.display_name),
     )
 
 
 @router.post("/logout")
 def logout():
-    sb: Client = get_supabase_client()
-    try:
-        sb.auth.sign_out()
-    except Exception as e:
-        logger.warning("Logout error: %s", e)
     return {"message": "Logged out"}
 
 
