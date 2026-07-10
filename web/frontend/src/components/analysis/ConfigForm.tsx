@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, Search, CheckCircle2 } from 'lucide-react'
 import Select from '../ui/Select'
+import { tickerApi, type TickerCandidate } from '../../api/ticker'
 
 const LLM_PROVIDERS = [
   { value: 'deepseek', label: 'DeepSeek' },
@@ -52,11 +53,40 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
   const [outputLanguage, setOutputLanguage] = useState('Chinese')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [looking, setLooking] = useState(false)
+  const [candidates, setCandidates] = useState<TickerCandidate[]>([])
+  const [lookupError, setLookupError] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
 
   const toggleAnalyst = (value: string) => {
     setAnalysts((prev) =>
       prev.includes(value) ? prev.filter((a) => a !== value) : [...prev, value]
     )
+  }
+
+  const handleLookup = async () => {
+    const query = companyName.trim()
+    if (!query || looking) return
+    setLooking(true)
+    setLookupError('')
+    setCandidates([])
+    setHasSearched(true)
+    try {
+      const { candidates: results } = await tickerApi.lookup(query)
+      setCandidates(results)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lookup failed'
+      setLookupError(msg)
+    } finally {
+      setLooking(false)
+    }
+  }
+
+  const pickCandidate = (candidate: TickerCandidate) => {
+    setTicker(candidate.ticker.toUpperCase())
+    setCandidates([])
+    setCompanyName('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,6 +131,82 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
           placeholder="e.g. AAPL, 0700.HK, BTC-USD"
           required
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Search by company name
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleLookup()
+              }
+            }}
+            className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            placeholder="e.g. Apple, 腾讯, Tesla, 茅台"
+          />
+          <button
+            type="button"
+            onClick={handleLookup}
+            disabled={looking || !companyName.trim()}
+            className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+          >
+            {looking ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
+            Search
+          </button>
+        </div>
+        {lookupError && (
+          <p className="mt-2 text-sm text-red-400">{lookupError}</p>
+        )}
+        {candidates.length > 0 && (
+          <div className="mt-2 space-y-1.5">
+            {candidates.map((candidate, index) => (
+              <button
+                key={`${candidate.ticker}-${index}`}
+                type="button"
+                onClick={() => pickCandidate(candidate)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-emerald-500/50 rounded-lg text-left transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono font-medium text-white shrink-0">
+                    {candidate.ticker}
+                  </span>
+                  <span className="text-gray-400 text-sm truncate">
+                    {candidate.name}
+                  </span>
+                  {candidate.exchange && (
+                    <span className="text-gray-500 text-xs shrink-0 hidden sm:inline">
+                      · {candidate.exchange}
+                    </span>
+                  )}
+                </div>
+                {candidate.validated ? (
+                  <span className="flex items-center gap-1 text-emerald-400 text-xs shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Verified
+                  </span>
+                ) : (
+                  <span className="text-gray-500 text-xs shrink-0">Unverified</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {!looking && !lookupError && hasSearched && candidates.length === 0 && (
+          <p className="mt-2 text-xs text-gray-500">
+            No results — try a more complete name or the English name.
+          </p>
+        )}
       </div>
 
       <div>
