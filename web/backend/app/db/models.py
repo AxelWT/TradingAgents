@@ -19,6 +19,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     display_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=utcnow)
+    is_admin = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_whitelisted = Column(Boolean, default=False, nullable=False)
 
     analysis_tasks = relationship(
         "AnalysisTask", back_populates="user", order_by="AnalysisTask.created_at.desc()"

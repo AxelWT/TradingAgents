@@ -14,27 +14,27 @@ def _build_message(to_email: str, code: str, settings: Settings) -> MIMEMultipar
     message = MIMEMultipart("alternative")
     message["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
     message["To"] = to_email
-    message["Subject"] = "TradingAgents 注册验证码"
+    message["Subject"] = "TradingAgents Registration Verification Code"
 
     text_body = (
-        f"您正在注册 TradingAgents 账号。\n\n"
-        f"您的验证码是：{code}\n\n"
-        f"验证码 {settings.VERIFY_CODE_EXPIRE_MINUTES} 分钟内有效，请尽快使用。\n"
-        f"如果不是您本人操作，请忽略此邮件。\n"
+        f"You are registering a TradingAgents account.\n\n"
+        f"Your verification code is: {code}\n\n"
+        f"This code is valid for {settings.VERIFY_CODE_EXPIRE_MINUTES} minutes. Please use it soon.\n"
+        f"If you did not request this, please ignore this email.\n"
     )
     html_body = (
         f"<div style='font-family:Arial,sans-serif;max-width:480px;margin:0 auto;"
         f"padding:24px;color:#333;'>"
-        f"<h2 style='color:#10b981;'>TradingAgents 注册验证码</h2>"
-        f"<p>您正在注册 TradingAgents 账号，请使用以下验证码完成注册：</p>"
+        f"<h2 style='color:#10b981;'>TradingAgents Verification Code</h2>"
+        f"<p>You are registering a TradingAgents account. Please use the following code to complete registration:</p>"
         f"<div style='margin:24px 0;text-align:center;'>"
         f"<span style='display:inline-block;font-size:28px;font-weight:bold;"
         f"letter-spacing:6px;color:#10b981;background:#f0fdf4;border:1px solid #bbf7d0;"
         f"border-radius:8px;padding:12px 24px;'>{code}</span>"
         f"</div>"
         f"<p style='color:#666;font-size:13px;'>"
-        f"验证码 {settings.VERIFY_CODE_EXPIRE_MINUTES} 分钟内有效。"
-        f"如果不是您本人操作，请忽略此邮件。</p>"
+        f"This code is valid for {settings.VERIFY_CODE_EXPIRE_MINUTES} minutes. "
+        f"If you did not request this, please ignore this email.</p>"
         f"</div>"
     )
 
@@ -44,11 +44,11 @@ def _build_message(to_email: str, code: str, settings: Settings) -> MIMEMultipar
 
 
 def _smtp_send_blocking(to_email: str, code: str) -> None:
-    """同步发送邮件，在线程池中执行以避免阻塞事件循环。"""
+    """Send email synchronously, executed in a thread pool to avoid blocking the event loop."""
     settings = get_settings()
 
     if not settings.SMTP_HOST or not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-        raise RuntimeError("邮件服务未配置")
+        raise RuntimeError("Email service not configured")
 
     message = _build_message(to_email, code, settings)
 
@@ -69,10 +69,10 @@ def _smtp_send_blocking(to_email: str, code: str) -> None:
 
 
 async def send_verification_email(to_email: str, code: str) -> None:
-    """异步发送验证码邮件（阻塞的 SMTP 调用放到线程池执行）。"""
+    """Send verification email asynchronously (blocking SMTP call is offloaded to a thread pool)."""
     try:
         await asyncio.to_thread(_smtp_send_blocking, to_email, code)
         logger.info("Verification email sent to %s", to_email)
     except Exception as e:
         logger.exception("Failed to send verification email to %s", to_email)
-        raise RuntimeError(f"邮件发送失败: {e}") from e
+        raise RuntimeError(f"Failed to send email: {e}") from e

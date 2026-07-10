@@ -54,16 +54,16 @@ export default function Reports() {
   const handleDelete = async (taskId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!window.confirm('确定删除该报告？此操作不可恢复。')) return
+    if (!window.confirm('Delete this report? This action cannot be undone.')) return
     try {
       await reportsApi.delete(taskId)
       await loadReports()
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 409) {
-        window.alert('该调研正在运行中，无法删除')
+        window.alert('This analysis is still running and cannot be deleted')
       } else {
-        window.alert('删除失败，请稍后重试')
+        window.alert('Failed to delete, please try again later')
       }
     }
   }

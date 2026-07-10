@@ -44,7 +44,7 @@ export default function Register() {
     setInfo('')
 
     if (!email) {
-      setError('请先输入邮箱')
+      setError('Please enter your email first')
       return
     }
 
@@ -54,7 +54,7 @@ export default function Register() {
       setInfo(resp.message)
       startCountdown(resp.expire_seconds > 60 ? 60 : resp.expire_seconds)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '验证码发送失败'
+      const msg = err instanceof Error ? err.message : 'Failed to send verification code'
       setError(msg)
     } finally {
       setSendingCode(false)
@@ -67,15 +67,15 @@ export default function Register() {
     setInfo('')
 
     if (!code) {
-      setError('请输入验证码')
+      setError('Please enter the verification code')
       return
     }
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+      setError('Passwords do not match')
       return
     }
     if (password.length < 6) {
-      setError('密码至少需要 6 个字符')
+      setError('Password must be at least 6 characters')
       return
     }
 
@@ -87,7 +87,7 @@ export default function Register() {
       setSuccess(true)
       setTimeout(() => navigate('/'), 1500)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '注册失败'
+      const msg = err instanceof Error ? err.message : 'Registration failed'
       setError(msg)
     } finally {
       setLoading(false)
@@ -99,8 +99,8 @@ export default function Register() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
         <div className="text-center">
           <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">注册成功！</h2>
-          <p className="text-gray-400">正在跳转到控制台...</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Registration Successful!</h2>
+          <p className="text-gray-400">Redirecting to dashboard...</p>
         </div>
       </div>
     )
@@ -112,7 +112,7 @@ export default function Register() {
         <div className="text-center mb-8">
           <TrendingUp className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-white">TradingAgents</h1>
-          <p className="text-gray-500 mt-2">创建你的账号</p>
+          <p className="text-gray-500 mt-2">Create your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl p-8 border border-gray-800">
@@ -131,7 +131,7 @@ export default function Register() {
 
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">邮箱</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -148,13 +148,13 @@ export default function Register() {
                   disabled={sendingCode || countdown > 0}
                   className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white transition-colors whitespace-nowrap"
                 >
-                  {sendingCode ? '发送中...' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+                  {sendingCode ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Send Code'}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">验证码</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Verification Code</label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -164,14 +164,14 @@ export default function Register() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                   className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 tracking-widest"
-                  placeholder="请输入 6 位验证码"
+                  placeholder="Enter 6-digit code"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">密码</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -179,14 +179,14 @@ export default function Register() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  placeholder="至少 6 个字符"
+                  placeholder="At least 6 characters"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">确认密码</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -194,7 +194,7 @@ export default function Register() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  placeholder="再次输入密码"
+                  placeholder="Re-enter password"
                   required
                 />
               </div>
@@ -205,14 +205,14 @@ export default function Register() {
               disabled={loading}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium rounded-lg transition-colors"
             >
-              {loading ? '注册中...' : '注册'}
+              {loading ? 'Registering...' : 'Register'}
             </button>
           </div>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            已有账号？{' '}
+            Already have an account?{' '}
             <Link to="/login" className="text-emerald-400 hover:text-emerald-300">
-              登录
+              Sign in
             </Link>
           </p>
         </form>

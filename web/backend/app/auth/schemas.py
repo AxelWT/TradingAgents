@@ -32,6 +32,9 @@ class UserInfo(BaseModel):
     id: str
     email: str
     display_name: Optional[str] = None
+    is_admin: bool = False
+    is_active: bool = True
+    is_whitelisted: bool = False
 
     class Config:
         from_attributes = True

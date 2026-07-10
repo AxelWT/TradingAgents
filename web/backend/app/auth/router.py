@@ -18,7 +18,7 @@ from app.auth.schemas import (
 )
 from app.auth.security import hash_password, verify_password, create_access_token
 from app.config import get_settings
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, _check_access
 from app.db.database import get_db
 from app.db.models import User, EmailVerificationCode
 
@@ -47,7 +47,7 @@ async def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
     settings = get_settings()
     now = _utcnow()
 
-    # 同邮箱重发限频
+    # Rate limit: resend cooldown per email
     latest = (
         db.query(EmailVerificationCode)
         .filter(EmailVerificationCode.email == req.email)
@@ -63,10 +63,10 @@ async def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
             wait = int(settings.VERIFY_CODE_RESEND_SECONDS - elapsed)
             raise HTTPException(
                 status_code=429,
-                detail=f"请求过于频繁，请 {wait} 秒后再试",
+                detail=f"Too many requests, please try again in {wait} seconds",
             )
 
-    # 生成验证码
+    # Generate verification code
     digits = settings.VERIFY_CODE_LENGTH
     code = "".join(secrets.choice("0123456789") for _ in range(digits))
 
@@ -82,17 +82,19 @@ async def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
     db.add(record)
     db.commit()
 
-    # 发送邮件（失败则回滚记录，避免占用记录但未送达）
+    # Send email (roll back the record on failure to avoid a stored code that was never delivered)
     try:
         await send_verification_email(req.email, code)
     except RuntimeError as e:
         logger.warning("send-code email failed for %s: %s", req.email, e)
         db.delete(record)
         db.commit()
-        raise HTTPException(status_code=503, detail="验证码邮件发送失败，请稍后重试")
+        raise HTTPException(
+            status_code=503, detail="Failed to send verification email, please try again later"
+        )
 
     return SendCodeResponse(
-        message="验证码已发送，请查收邮件",
+        message="Verification code sent, please check your email",
         expire_seconds=settings.VERIFY_CODE_EXPIRE_MINUTES * 60,
     )
 
@@ -104,9 +106,9 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     existing = db.query(User).filter(User.email == req.email).first()
     if existing is not None:
-        raise HTTPException(status_code=400, detail="该邮箱已注册")
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    # 校验验证码：取该邮箱最新未消费记录
+    # Validate verification code: get the latest unconsumed record for this email
     record = (
         db.query(EmailVerificationCode)
         .filter(
@@ -118,29 +120,31 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     )
 
     if record is None:
-        raise HTTPException(status_code=400, detail="请先获取验证码")
+        raise HTTPException(status_code=400, detail="Please request a verification code first")
 
     expires_at = record.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if now > expires_at:
-        raise HTTPException(status_code=400, detail="验证码已过期，请重新获取")
+        raise HTTPException(
+            status_code=400, detail="Verification code expired, please request a new one"
+        )
 
-    # 试错次数累加
+    # Increment attempt count
     record.attempts = (record.attempts or 0) + 1
     if record.attempts > settings.VERIFY_CODE_MAX_ATTEMPTS:
         record.consumed = True
         db.commit()
         raise HTTPException(
             status_code=429,
-            detail="验证码错误次数过多，请重新获取",
+            detail="Too many incorrect attempts, please request a new code",
         )
 
     if not _verify_code(req.code, record.code_hash):
         db.commit()
-        raise HTTPException(status_code=400, detail="验证码错误")
+        raise HTTPException(status_code=400, detail="Invalid verification code")
 
-    # 验证通过，标记消费
+    # Verification passed, mark as consumed
     record.consumed = True
 
     user = User(
@@ -155,7 +159,14 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     token = create_access_token(user.id)
     return AuthResponse(
         access_token=token,
-        user=UserInfo(id=user.id, email=user.email, display_name=user.display_name),
+        user=UserInfo(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name,
+            is_admin=user.is_admin,
+            is_active=user.is_active,
+            is_whitelisted=user.is_whitelisted,
+        ),
     )
 
 
@@ -163,12 +174,21 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if user is None or not verify_password(req.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="邮箱或密码错误")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    _check_access(user)
 
     token = create_access_token(user.id)
     return AuthResponse(
         access_token=token,
-        user=UserInfo(id=user.id, email=user.email, display_name=user.display_name),
+        user=UserInfo(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name,
+            is_admin=user.is_admin,
+            is_active=user.is_active,
+            is_whitelisted=user.is_whitelisted,
+        ),
     )
 
 
@@ -180,5 +200,10 @@ def logout():
 @router.get("/me", response_model=UserInfo)
 def get_me(current_user: User = Depends(get_current_user)):
     return UserInfo(
-        id=current_user.id, email=current_user.email, display_name=current_user.display_name
+        id=current_user.id,
+        email=current_user.email,
+        display_name=current_user.display_name,
+        is_admin=current_user.is_admin,
+        is_active=current_user.is_active,
+        is_whitelisted=current_user.is_whitelisted,
     )

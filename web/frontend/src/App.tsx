@@ -7,11 +7,24 @@ import Dashboard from './pages/Dashboard'
 import Analysis from './pages/Analysis'
 import Reports from './pages/Reports'
 import ReportDetail from './pages/ReportDetail'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuth()
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  if (!user?.is_admin) {
+    return <Navigate to="/" replace />
   }
   return <>{children}</>
 }
@@ -34,6 +47,22 @@ export default function App() {
         <Route path="analysis/:taskId" element={<Analysis />} />
         <Route path="reports" element={<Reports />} />
         <Route path="reports/:taskId" element={<ReportDetail />} />
+        <Route
+          path="admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/users"
+          element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          }
+        />
       </Route>
     </Routes>
   )

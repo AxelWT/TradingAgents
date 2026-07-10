@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
-    # SMTP 邮件配置
+    # SMTP email configuration
     SMTP_HOST: str = ""
     SMTP_PORT: int = 465
     SMTP_USE_SSL: bool = True
@@ -40,11 +40,17 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "TradingAgents"
     SMTP_FROM_EMAIL: str = ""
 
-    # 邮箱验证码配置
+    # Email verification code configuration
     VERIFY_CODE_LENGTH: int = 6
     VERIFY_CODE_EXPIRE_MINUTES: int = 10
     VERIFY_CODE_RESEND_SECONDS: int = 60
     VERIFY_CODE_MAX_ATTEMPTS: int = 5
+
+    # Admin & access control configuration
+    # ACCESS_MODE: open = all non-blacklisted users can log in; whitelist = only whitelisted users can log in
+    ACCESS_MODE: str = "open"
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
 
 
 @lru_cache()

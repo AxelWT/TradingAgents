@@ -25,16 +25,16 @@ export default function Dashboard() {
 
   const handleDelete = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!window.confirm('确定删除该调研记录？此操作不可恢复。')) return
+    if (!window.confirm('Delete this analysis? This action cannot be undone.')) return
     try {
       await analysisApi.delete(taskId)
       await loadRecentTasks()
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 409) {
-        window.alert('该调研正在运行中，无法删除')
+        window.alert('This analysis is still running and cannot be deleted')
       } else {
-        window.alert('删除失败，请稍后重试')
+        window.alert('Failed to delete, please try again later')
       }
     }
   }
@@ -148,8 +148,8 @@ export default function Dashboard() {
                     className="p-1.5 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500"
                     title={
                       task.status === 'pending' || task.status === 'running'
-                        ? '运行中无法删除'
-                        : '删除该调研记录'
+                      ? 'Cannot delete while running'
+                        : 'Delete analysis'
                     }
                   >
                     <Trash2 className="w-4 h-4" />

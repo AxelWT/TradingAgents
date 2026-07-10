@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { authApi } from '../../api/auth'
-import { BarChart3, Play, FileText, LogOut, TrendingUp, Menu, X } from 'lucide-react'
+import { BarChart3, Play, FileText, LogOut, TrendingUp, Menu, X, Shield } from 'lucide-react'
 
 export default function Layout() {
   const { user, clearAuth } = useAuth()
@@ -23,6 +23,11 @@ export default function Layout() {
     { to: '/', icon: BarChart3, label: 'Dashboard' },
     { to: '/analysis', icon: Play, label: 'New Analysis' },
     { to: '/reports', icon: FileText, label: 'Reports' },
+    ...(user?.is_admin
+      ? [
+          { to: '/admin', icon: Shield, label: 'Admin' },
+        ]
+      : []),
   ]
 
   return (

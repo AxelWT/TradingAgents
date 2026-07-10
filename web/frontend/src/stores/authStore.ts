@@ -4,6 +4,9 @@ interface User {
   id: string
   email: string
   display_name: string | null
+  is_admin: boolean
+  is_active: boolean
+  is_whitelisted: boolean
 }
 
 interface AuthState {

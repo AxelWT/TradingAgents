@@ -76,6 +76,9 @@ jobs:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ACCESS_MODE: ${{ vars.ACCESS_MODE }}
         run: |
           cat > .env <<EOF
           # LLM Providers
@@ -111,6 +114,10 @@ jobs:
           SMTP_USERNAME=$SMTP_USERNAME
           SMTP_PASSWORD=$SMTP_PASSWORD
           SMTP_FROM_EMAIL=$SMTP_FROM_EMAIL
+          # Admin & access control
+          ADMIN_EMAIL=$ADMIN_EMAIL
+          ADMIN_PASSWORD=$ADMIN_PASSWORD
+          ACCESS_MODE=$ACCESS_MODE
           EOF
 
       - name: Base64 encode .env for transfer
