@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Analysis from './pages/Analysis'
 import Reports from './pages/Reports'
 import ReportDetail from './pages/ReportDetail'
+import MultiAgent from './pages/MultiAgent'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 
@@ -43,6 +44,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="multi-agent" element={<MultiAgent />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="analysis/:taskId" element={<Analysis />} />
         <Route path="reports" element={<Reports />} />

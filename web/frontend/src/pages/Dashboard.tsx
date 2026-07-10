@@ -93,15 +93,20 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <div className="surface-card flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl">
+        <Link
+          to="/multi-agent"
+          className="surface-card flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl hover:border-purple-500/50 hover:-translate-y-1 transition-all duration-300 group"
+        >
           <div className="p-3 bg-purple-500/10 rounded-lg">
             <TrendingUp className="w-6 h-6 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-text-primary font-medium">Multi-Agent</h3>
-            <p className="text-text-faint text-sm">8 specialized agents</p>
+            <h3 className="text-text-primary font-medium group-hover:text-purple-400 transition-colors">
+              Multi-Agent
+            </h3>
+            <p className="text-text-faint text-sm">12 specialized agents</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div>
