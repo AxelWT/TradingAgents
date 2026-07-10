@@ -64,9 +64,9 @@ export default function ReportDetail() {
   }
 
   const signalColor: Record<string, string> = {
-    Buy: 'text-emerald-400',
+    Buy: 'text-up',
     Hold: 'text-yellow-400',
-    Sell: 'text-red-400',
+    Sell: 'text-down',
   }
 
   return (

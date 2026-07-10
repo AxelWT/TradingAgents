@@ -9,8 +9,8 @@ interface AgentProgressProps {
 const statusIcon: Record<string, React.ReactNode> = {
   pending: <Clock className="w-3.5 h-3.5 text-yellow-500" />,
   in_progress: <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />,
-  completed: <Check className="w-3.5 h-3.5 text-emerald-400" />,
-  error: <AlertCircle className="w-3.5 h-3.5 text-red-400" />,
+  completed: <Check className="w-3.5 h-3.5 text-up" />,
+  error: <AlertCircle className="w-3.5 h-3.5 text-down" />,
 }
 
 const statusText: Record<string, string> = {
@@ -51,9 +51,9 @@ export default function AgentProgress({ agentStatus, teams }: AgentProgressProps
                         status === 'in_progress'
                           ? 'text-blue-400'
                           : status === 'completed'
-                          ? 'text-emerald-400'
+                          ? 'text-up'
                           : status === 'error'
-                          ? 'text-red-400'
+                          ? 'text-down'
                           : 'text-text-faint'
                       }`}
                     >

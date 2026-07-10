@@ -69,9 +69,9 @@ export default function Reports() {
   }
 
   const signalColor: Record<string, string> = {
-    Buy: 'text-emerald-400 bg-emerald-400/10',
+    Buy: 'text-up bg-up/10',
     Hold: 'text-yellow-400 bg-yellow-400/10',
-    Sell: 'text-red-400 bg-red-400/10',
+    Sell: 'text-down bg-down/10',
   }
 
   return (
@@ -157,7 +157,7 @@ export default function Reports() {
                 </button>
                 <button
                   onClick={(e) => handleDelete(task.id, e)}
-                  className="p-2 text-text-faint hover:text-red-400 transition-colors"
+                  className="p-2 text-text-faint hover:text-down transition-colors"
                   title="Delete report"
                 >
                   <Trash2 className="w-4 h-4" />

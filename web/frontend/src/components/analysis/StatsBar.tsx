@@ -41,9 +41,9 @@ export default function StatsBar() {
             status === 'running'
               ? 'text-blue-400'
               : status === 'completed'
-              ? 'text-emerald-400'
+              ? 'text-up'
               : status === 'failed'
-              ? 'text-red-400'
+              ? 'text-down'
               : 'text-text-faint'
           }
         >

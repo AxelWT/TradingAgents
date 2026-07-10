@@ -32,7 +32,7 @@ export default function AnalysisDashboard() {
       <StatsBar />
 
       {status === 'failed' && error && (
-        <div className="mx-4 md:mx-6 mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+        <div className="mx-4 md:mx-6 mt-4 p-4 bg-down/10 border border-down/20 rounded-lg text-down text-sm">
           Error: {error}
         </div>
       )}
@@ -43,9 +43,9 @@ export default function AnalysisDashboard() {
           <span
             className={`text-xl font-bold ${
               signal === 'Buy'
-                ? 'text-emerald-400'
+                ? 'text-up'
                 : signal === 'Sell'
-                ? 'text-red-400'
+                ? 'text-down'
                 : 'text-yellow-400'
             }`}
           >

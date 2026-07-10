@@ -139,7 +139,7 @@ export default function Register() {
           className="surface-card bg-surface rounded-2xl p-8 border border-border-subtle"
         >
           {error && (
-            <div className="flex items-center gap-2 p-3 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+            <div className="flex items-center gap-2 p-3 mb-6 bg-down/10 border border-down/20 rounded-lg text-down text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>

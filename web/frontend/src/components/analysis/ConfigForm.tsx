@@ -114,14 +114,14 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+        <div className="flex items-center gap-2 p-3 bg-down/10 border border-down/20 rounded-lg text-down text-sm">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-2">
-          Ticker Symbol <span className="text-red-400">*</span>
+          Ticker Symbol <span className="text-down">*</span>
         </label>
         <input
           type="text"
@@ -166,7 +166,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
           </button>
         </div>
         {lookupError && (
-          <p className="mt-2 text-sm text-red-400">{lookupError}</p>
+          <p className="mt-2 text-sm text-down">{lookupError}</p>
         )}
         {candidates.length > 0 && (
           <div className="mt-2 space-y-1.5">

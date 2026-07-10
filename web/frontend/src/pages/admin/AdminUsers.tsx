@@ -188,11 +188,11 @@ export default function AdminUsers() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {user.is_active ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium text-emerald-400 bg-emerald-400/10">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium text-up bg-up/10">
                             Active
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium text-red-400 bg-red-400/10">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium text-down bg-down/10">
                             Blacklisted
                           </span>
                         )}
@@ -218,7 +218,7 @@ export default function AdminUsers() {
                                         adminApi.addToBlacklist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-text-faint hover:text-red-400 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-down transition-colors"
                                     title="Add to blacklist"
                                   >
                                     <Ban className="w-4 h-4" />
@@ -230,7 +230,7 @@ export default function AdminUsers() {
                                         adminApi.removeFromBlacklist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-text-faint hover:text-emerald-400 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-up transition-colors"
                                     title="Remove from blacklist"
                                   >
                                     <CheckCircle className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function AdminUsers() {
                             {!user.is_admin && (
                               <button
                                 onClick={() => handleDelete(user)}
-                                className="p-1.5 text-text-faint hover:text-red-400 transition-colors"
+                                className="p-1.5 text-text-faint hover:text-down transition-colors"
                                 title="Delete user"
                               >
                                 <Trash2 className="w-4 h-4" />

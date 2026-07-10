@@ -60,13 +60,13 @@ export default function AdminDashboard() {
           label: 'Active Users',
           value: stats.active_users,
           icon: CheckCircle,
-          color: 'text-emerald-400 bg-emerald-400/10',
+          color: 'text-up bg-up/10',
         },
         {
           label: 'Blacklisted',
           value: stats.blacklisted_users,
           icon: Ban,
-          color: 'text-red-400 bg-red-400/10',
+          color: 'text-down bg-down/10',
         },
         {
           label: 'Whitelisted',
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
       {loading ? (
         <div className="text-text-secondary text-center py-12">Loading...</div>
       ) : error ? (
-        <div className="text-red-400 text-center py-12">{error}</div>
+        <div className="text-down text-center py-12">{error}</div>
       ) : stats ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                 {stats.access_mode === 'whitelist' ? (
                   <Lock className="w-5 h-5 text-yellow-400" />
                 ) : (
-                  <Unlock className="w-5 h-5 text-emerald-400" />
+                  <Unlock className="w-5 h-5 text-up" />
                 )}
                 <div>
                   <h3 className="text-text-primary font-medium">Access Mode</h3>
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
                     stats.access_mode === 'whitelist'
                       ? 'text-yellow-400 bg-yellow-400/10'
-                      : 'text-emerald-400 bg-emerald-400/10'
+                      : 'text-up bg-up/10'
                   }`}
                 >
                   {stats.access_mode === 'whitelist' ? 'Whitelist' : 'Open'}

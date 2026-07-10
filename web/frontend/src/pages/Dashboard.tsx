@@ -42,14 +42,14 @@ export default function Dashboard() {
   const statusColor: Record<string, string> = {
     pending: 'text-yellow-400 bg-yellow-400/10',
     running: 'text-blue-400 bg-blue-400/10',
-    completed: 'text-emerald-400 bg-emerald-400/10',
-    failed: 'text-red-400 bg-red-400/10',
+    completed: 'text-up bg-up/10',
+    failed: 'text-down bg-down/10',
   }
 
   const signalColor: Record<string, string> = {
-    Buy: 'text-emerald-400',
+    Buy: 'text-up',
     Hold: 'text-yellow-400',
-    Sell: 'text-red-400',
+    Sell: 'text-down',
   }
 
   return (
@@ -143,12 +143,12 @@ export default function Dashboard() {
                     {task.status}
                   </span>
                   {task.error_message && (
-                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    <AlertCircle className="w-4 h-4 text-down" />
                   )}
                   <button
                     onClick={(e) => handleDelete(task.id, e)}
                     disabled={task.status === 'pending' || task.status === 'running'}
-                    className="p-1.5 text-text-faint hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-text-faint"
+                    className="p-1.5 text-text-faint hover:text-down transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-text-faint"
                     title={
                       task.status === 'pending' || task.status === 'running'
                       ? 'Cannot delete while running'
