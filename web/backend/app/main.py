@@ -16,6 +16,7 @@ from app.db.database import init_db, create_tables
 from app.auth.router import router as auth_router
 from app.analysis.router import router as analysis_router
 from app.reports.router import router as reports_router
+from app.ticker.router import router as ticker_router
 from app.admin.router import router as admin_router
 from app.auth.security import hash_password
 from app.db.models import User
@@ -84,6 +85,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(analysis_router, prefix=settings.API_PREFIX)
 app.include_router(reports_router, prefix=settings.API_PREFIX)
+app.include_router(ticker_router, prefix=settings.API_PREFIX)
 app.include_router(admin_router, prefix=settings.API_PREFIX)
 
 
