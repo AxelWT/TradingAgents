@@ -31,7 +31,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.prod
+          file: ./web/Dockerfile.prod
           push: true
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
@@ -111,8 +111,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: docker-compose.prod.yml
+          source: web/docker-compose.prod.yml
           target: ${{ secrets.DEPLOY_PATH || '/app/tradingagents' }}
+          strip_components: 1
           overwrite: true
 
       - name: SSH deploy
