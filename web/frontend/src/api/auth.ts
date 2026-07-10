@@ -18,6 +18,16 @@ export interface LoginParams {
 export interface RegisterParams {
   email: string
   password: string
+  code: string
+}
+
+export interface SendCodeParams {
+  email: string
+}
+
+export interface SendCodeResponse {
+  message: string
+  expire_seconds: number
 }
 
 export const authApi = {
@@ -28,6 +38,11 @@ export const authApi = {
 
   register: async (params: RegisterParams): Promise<AuthResponse> => {
     const { data } = await api.post('/api/auth/register', params)
+    return data
+  },
+
+  sendCode: async (params: SendCodeParams): Promise<SendCodeResponse> => {
+    const { data } = await api.post('/api/auth/send-code', params)
     return data
   },
 

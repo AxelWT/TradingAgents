@@ -10,6 +10,16 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    code: str
+
+
+class SendCodeRequest(BaseModel):
+    email: EmailStr
+
+
+class SendCodeResponse(BaseModel):
+    message: str
+    expire_seconds: int
 
 
 class AuthResponse(BaseModel):

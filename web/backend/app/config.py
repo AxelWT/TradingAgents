@@ -31,6 +31,21 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    # SMTP 邮件配置
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 465
+    SMTP_USE_SSL: bool = True
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_NAME: str = "TradingAgents"
+    SMTP_FROM_EMAIL: str = ""
+
+    # 邮箱验证码配置
+    VERIFY_CODE_LENGTH: int = 6
+    VERIFY_CODE_EXPIRE_MINUTES: int = 10
+    VERIFY_CODE_RESEND_SECONDS: int = 60
+    VERIFY_CODE_MAX_ATTEMPTS: int = 5
+
 
 @lru_cache()
 def get_settings() -> Settings:

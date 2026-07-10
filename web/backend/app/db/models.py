@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, DateTime, JSON, ForeignKey, Integer
+from sqlalchemy import Column, String, Text, DateTime, JSON, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -46,3 +46,15 @@ class AnalysisTask(Base):
     created_at = Column(DateTime, default=utcnow)
 
     user = relationship("User", back_populates="analysis_tasks")
+
+
+class EmailVerificationCode(Base):
+    __tablename__ = "email_verification_codes"
+
+    id = Column(String, primary_key=True)
+    email = Column(String, index=True, nullable=False)
+    code_hash = Column(String, nullable=False)
+    attempts = Column(Integer, default=0, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    consumed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utcnow)

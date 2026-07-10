@@ -70,6 +70,12 @@ jobs:
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USE_SSL: ${{ vars.SMTP_USE_SSL }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
         run: |
           cat > .env <<EOF
           # LLM Providers
@@ -98,6 +104,13 @@ jobs:
           JWT_SECRET_KEY=$JWT_SECRET_KEY
           CORS_ORIGINS=$CORS_ORIGINS
           DATABASE_URL=sqlite:////home/appuser/.tradingagents/web.db
+          # Email verification (SMTP)
+          SMTP_HOST=$SMTP_HOST
+          SMTP_PORT=$SMTP_PORT
+          SMTP_USE_SSL=$SMTP_USE_SSL
+          SMTP_USERNAME=$SMTP_USERNAME
+          SMTP_PASSWORD=$SMTP_PASSWORD
+          SMTP_FROM_EMAIL=$SMTP_FROM_EMAIL
           EOF
 
       - name: Base64 encode .env for transfer
