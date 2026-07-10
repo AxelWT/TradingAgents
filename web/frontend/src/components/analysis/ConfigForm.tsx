@@ -116,13 +116,13 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-3">Analyst Team</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
           {ANALYST_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => toggleAnalyst(value)}
-              className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+              className={`px-3 py-2.5 md:px-4 md:py-3 rounded-lg border text-sm font-medium transition-colors ${
                 analysts.includes(value)
                   ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
@@ -136,13 +136,13 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-3">Research Depth</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
           {DEPTH_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => setResearchDepth(value)}
-              className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+              className={`px-3 py-2.5 md:px-4 md:py-3 rounded-lg border text-sm font-medium transition-colors ${
                 researchDepth === value
                   ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'

@@ -16,7 +16,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /build
 COPY . .
-RUN pip install --no-cache-dir . \
+RUN pip install --no-cache-dir ".[akshare,tushare]" \
  && pip install --no-cache-dir -r web/backend/requirements.txt
 
 # ===== Stage 3: runtime =====

@@ -53,16 +53,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome to TradingAgents</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
         <button
           onClick={() => navigate('/analysis')}
-          className="flex items-center gap-4 p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-emerald-500/50 transition-colors group"
+          className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-emerald-500/50 transition-colors group"
         >
           <div className="p-3 bg-emerald-500/10 rounded-lg">
             <Play className="w-6 h-6 text-emerald-400" />
@@ -77,7 +77,7 @@ export default function Dashboard() {
 
         <Link
           to="/reports"
-          className="flex items-center gap-4 p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-blue-500/50 transition-colors group"
+          className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-blue-500/50 transition-colors group"
         >
           <div className="p-3 bg-blue-500/10 rounded-lg">
             <FileText className="w-6 h-6 text-blue-400" />
@@ -90,7 +90,7 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <div className="flex items-center gap-4 p-6 bg-gray-900 border border-gray-800 rounded-xl">
+        <div className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl">
           <div className="p-3 bg-purple-500/10 rounded-lg">
             <TrendingUp className="w-6 h-6 text-purple-400" />
           </div>
@@ -115,7 +115,7 @@ export default function Dashboard() {
             {recentTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center justify-between p-4 bg-gray-900 border border-gray-800 rounded-lg hover:border-gray-700 transition-colors cursor-pointer"
+                className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-900 border border-gray-800 rounded-lg hover:border-gray-700 transition-colors cursor-pointer"
                 onClick={() => {
                   if (task.status === 'completed') {
                     navigate(`/reports/${task.id}`)
@@ -130,7 +130,7 @@ export default function Dashboard() {
                     <span className="text-gray-500 text-sm ml-3">{task.trade_date}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 md:gap-4">
                   {task.signal && (
                     <span className={`font-semibold ${signalColor[task.signal] || 'text-gray-400'}`}>
                       {task.signal}

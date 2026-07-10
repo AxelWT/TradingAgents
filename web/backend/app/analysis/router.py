@@ -120,6 +120,7 @@ def delete_analysis(
         )
     db.delete(task)
     db.commit()
+    manager.clear_buffer(task_id)
 
 
 @router.websocket("/ws/{task_id}")
@@ -161,7 +162,21 @@ async def analysis_websocket(websocket: WebSocket, task_id: str):
             await existing.close(code=4000)
         except Exception:
             pass
+
+    # Snapshot buffered events and register the new WS in one synchronous
+    # step (no await between them) so no event is lost or duplicated:
+    # - Events before the snapshot → in the snapshot → replayed below.
+    # - Events after registration → pushed directly to the WS, not buffered.
+    snapshot = list(manager.get_buffered(task_id))
     manager.active[task_id] = websocket
+
+    for msg in snapshot:
+        try:
+            await websocket.send_json(msg)
+        except Exception:
+            logger.warning("Failed to replay buffered event for task %s", task_id)
+            break
+
     try:
         while True:
             await websocket.receive_text()

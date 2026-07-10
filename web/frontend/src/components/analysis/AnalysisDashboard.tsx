@@ -32,13 +32,13 @@ export default function AnalysisDashboard() {
       <StatsBar />
 
       {status === 'failed' && error && (
-        <div className="mx-6 mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+        <div className="mx-4 md:mx-6 mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           Error: {error}
         </div>
       )}
 
       {status === 'completed' && signal && (
-        <div className="mx-6 mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-center">
+        <div className="mx-4 md:mx-6 mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-center">
           <span className="text-gray-400 mr-2">Final Signal:</span>
           <span
             className={`text-xl font-bold ${
@@ -57,19 +57,19 @@ export default function AnalysisDashboard() {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-[360px] border-r border-gray-800 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+        <div className="border-b md:border-b-0 md:border-r border-gray-800 flex flex-col md:overflow-hidden md:w-[360px] shrink-0">
           <AgentProgress
             agentStatus={activeAgents}
             teams={ALL_AGENTS_STRUCTURED}
           />
         </div>
 
-        <div className="w-[400px] border-r border-gray-800 flex flex-col overflow-hidden">
+        <div className="border-b md:border-b-0 md:border-r border-gray-800 flex flex-col md:overflow-hidden md:w-[400px] shrink-0">
           <MessageFeed />
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col md:overflow-hidden">
           <AnalysisPanel />
         </div>
       </div>

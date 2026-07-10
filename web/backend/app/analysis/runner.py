@@ -33,6 +33,7 @@ def _get_main_loop() -> asyncio.AbstractEventLoop:
 class ConnectionManager:
     def __init__(self):
         self.active: dict[str, WebSocket] = {}
+        self._buffers: dict[str, list[dict]] = {}
 
     async def connect(self, task_id: str, websocket: WebSocket):
         await websocket.accept()
@@ -42,12 +43,19 @@ class ConnectionManager:
         self.active.pop(task_id, None)
 
     async def push(self, task_id: str, message: dict):
+        self._buffers.setdefault(task_id, []).append(message)
         ws = self.active.get(task_id)
         if ws:
             try:
                 await ws.send_json(message)
             except Exception:
                 self.disconnect(task_id)
+
+    def get_buffered(self, task_id: str) -> list[dict]:
+        return self._buffers.get(task_id, [])
+
+    def clear_buffer(self, task_id: str):
+        self._buffers.pop(task_id, None)
 
 
 manager = ConnectionManager()
@@ -60,18 +68,10 @@ class WebSocketCallbackAdapter:
 
     def _push_sync(self, message: dict):
         try:
-            ws = manager.active.get(self.task_id)
-            if ws:
-                future = asyncio.run_coroutine_threadsafe(
-                    manager.push(self.task_id, message), self.loop
-                )
-                future.result(timeout=5)
-            else:
-                logger.warning(
-                    "No active WS for task %s, message type=%s skipped",
-                    self.task_id,
-                    message.get("type"),
-                )
+            future = asyncio.run_coroutine_threadsafe(
+                manager.push(self.task_id, message), self.loop
+            )
+            future.result(timeout=5)
         except Exception as e:
             logger.warning("WS push failed for task %s: %s", self.task_id, e)
 

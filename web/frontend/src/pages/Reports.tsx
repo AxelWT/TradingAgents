@@ -75,10 +75,10 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white">Reports</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Reports</h1>
           <p className="text-gray-500 mt-1">{total} completed analyses</p>
         </div>
 
@@ -91,7 +91,7 @@ export default function Reports() {
               setSearch(e.target.value)
               setPage(1)
             }}
-            className="pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-64"
+            className="pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-full sm:w-64"
             placeholder="Search by ticker..."
           />
         </div>
@@ -111,9 +111,9 @@ export default function Reports() {
             <Link
               key={task.id}
               to={`/reports/${task.id}`}
-              className="flex items-center justify-between p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors group"
+              className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors group"
             >
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-3 md:gap-5">
                 <div className="p-2.5 bg-gray-800 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-emerald-400" />
                 </div>
@@ -166,7 +166,7 @@ export default function Reports() {
       )}
 
       {total > 20 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
+        <div className="flex items-center justify-center gap-3 md:gap-4 mt-6 md:mt-8">
           <button
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}

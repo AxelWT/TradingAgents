@@ -71,8 +71,8 @@ export default function ReportDetail() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 border-b border-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/reports')}
@@ -83,7 +83,7 @@ export default function ReportDetail() {
             <div>
               <div className="flex items-center gap-3">
                 <TrendingUp className="w-5 h-5 text-emerald-400" />
-                <h1 className="text-2xl font-bold text-white">{task.ticker}</h1>
+                <h1 className="text-xl md:text-2xl font-bold text-white">{task.ticker}</h1>
                 {task.signal && (
                   <span
                     className={`text-lg font-bold ${signalColor[task.signal] || 'text-gray-400'}`}
@@ -115,7 +115,7 @@ export default function ReportDetail() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-8">
+      <div className="flex-1 overflow-auto p-4 md:p-8">
         {task.agent_reports && Object.keys(task.agent_reports).length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-300 mb-6">Agent Reports</h2>
@@ -133,7 +133,7 @@ export default function ReportDetail() {
                 return (
                   <div
                     key={section}
-                    className="bg-gray-900 border border-gray-800 rounded-xl p-6"
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-4 md:p-6"
                   >
                     <h3 className="text-md font-semibold text-emerald-400 mb-4">
                       {titles[section] || section}
@@ -153,7 +153,7 @@ export default function ReportDetail() {
         {task.final_report && (
           <div>
             <h2 className="text-lg font-semibold text-gray-300 mb-6">Final Decision</h2>
-            <div className="bg-gray-900 border border-emerald-500/20 rounded-xl p-6">
+            <div className="bg-gray-900 border border-emerald-500/20 rounded-xl p-4 md:p-6">
               <div className="prose prose-invert max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {task.final_report}
