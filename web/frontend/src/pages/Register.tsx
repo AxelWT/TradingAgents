@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { useAuth } from '../hooks/useAuth'
 import { TrendingUp, Mail, Lock, AlertCircle, CheckCircle, KeyRound } from 'lucide-react'
+import ThemeToggle from '../components/ui/ThemeToggle'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -96,26 +97,47 @@ export default function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="text-center">
-          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Registration Successful!</h2>
-          <p className="text-gray-400">Redirecting to dashboard...</p>
+      <div className="relative min-h-screen bg-bg flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-grid" />
+        <div className="bg-glow" />
+        <div className="bg-glow" />
+        <div className="bg-glow" />
+        <div className="relative z-1 text-center">
+          <CheckCircle className="w-16 h-16 text-accent mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            Registration Successful!
+          </h2>
+          <p className="text-text-secondary">Redirecting to dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-bg flex items-center justify-center p-4 overflow-hidden">
+      <div className="bg-grid" />
+      <div className="bg-glow" />
+      <div className="bg-glow" />
+      <div className="bg-glow" />
+      <div className="absolute top-6 right-6 z-10">
+        <ThemeToggle />
+      </div>
+
+      <div className="relative z-1 w-full max-w-md">
         <div className="text-center mb-8">
-          <TrendingUp className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-white">TradingAgents</h1>
-          <p className="text-gray-500 mt-2">Create your account</p>
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center mx-auto mb-4">
+            <TrendingUp className="w-7 h-7 text-bg" />
+          </div>
+          <h1 className="text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            TradingAgents
+          </h1>
+          <p className="text-text-secondary mt-2">Create your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl p-8 border border-gray-800">
+        <form
+          onSubmit={handleSubmit}
+          className="surface-card bg-surface rounded-2xl p-8 border border-border-subtle"
+        >
           {error && (
             <div className="flex items-center gap-2 p-3 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -123,7 +145,7 @@ export default function Register() {
             </div>
           )}
           {info && !error && (
-            <div className="flex items-center gap-2 p-3 mb-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-sm">
+            <div className="flex items-center gap-2 p-3 mb-6 bg-accent/10 border border-accent/20 rounded-lg text-accent text-sm">
               <CheckCircle className="w-4 h-4 shrink-0" />
               {info}
             </div>
@@ -131,14 +153,14 @@ export default function Register() {
 
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-faint" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-28 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="w-full pl-11 pr-28 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                   placeholder="you@example.com"
                   required
                 />
@@ -146,7 +168,7 @@ export default function Register() {
                   type="button"
                   onClick={handleSendCode}
                   disabled={sendingCode || countdown > 0}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white transition-colors whitespace-nowrap"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-medium rounded-md bg-gradient-to-r from-accent to-accent-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-bg transition-opacity whitespace-nowrap"
                 >
                   {sendingCode ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Send Code'}
                 </button>
@@ -154,16 +176,16 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Verification Code</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Verification Code</label>
               <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-faint" />
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 tracking-widest"
+                  className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors tracking-widest"
                   placeholder="Enter 6-digit code"
                   required
                 />
@@ -171,14 +193,14 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-faint" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                   placeholder="At least 6 characters"
                   required
                 />
@@ -186,14 +208,14 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Confirm Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-faint" />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
                   placeholder="Re-enter password"
                   required
                 />
@@ -203,15 +225,15 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium rounded-lg transition-colors"
+              className="w-full py-3 bg-gradient-to-r from-accent to-accent-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-bg font-medium rounded-lg transition-opacity"
             >
               {loading ? 'Registering...' : 'Register'}
             </button>
           </div>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-text-secondary">
             Already have an account?{' '}
-            <Link to="/login" className="text-emerald-400 hover:text-emerald-300">
+            <Link to="/login" className="text-accent hover:opacity-80">
               Sign in
             </Link>
           </p>

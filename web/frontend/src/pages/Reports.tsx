@@ -75,15 +75,18 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 relative z-1">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Reports</h1>
-          <p className="text-gray-500 mt-1">{total} completed analyses</p>
+          <div className="section-tag mb-2">Archive</div>
+          <h1 className="text-2xl md:text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            Reports
+          </h1>
+          <p className="text-text-secondary mt-1">{total} completed analyses</p>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-faint" />
           <input
             type="text"
             value={search}
@@ -91,17 +94,17 @@ export default function Reports() {
               setSearch(e.target.value)
               setPage(1)
             }}
-            className="pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-full sm:w-64"
+            className="pl-10 pr-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-sm placeholder-text-faint focus:outline-none focus:border-accent w-full sm:w-64 transition-colors"
             placeholder="Search by ticker..."
           />
         </div>
       </div>
 
       {loading ? (
-        <div className="text-gray-500 text-center py-12">Loading...</div>
+        <div className="text-text-secondary text-center py-12">Loading...</div>
       ) : tasks.length === 0 ? (
-        <div className="text-gray-500 text-center py-16 bg-gray-900 rounded-xl border border-gray-800">
-          <FileText className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+        <div className="text-text-secondary text-center py-16 bg-surface rounded-xl border border-border-subtle">
+          <FileText className="w-12 h-12 mx-auto mb-4 text-text-faint" />
           <p className="text-lg">No reports yet</p>
           <p className="text-sm mt-2">Complete an analysis to see reports here</p>
         </div>
@@ -111,26 +114,26 @@ export default function Reports() {
             <Link
               key={task.id}
               to={`/reports/${task.id}`}
-              className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors group"
+              className="surface-card flex flex-wrap items-center justify-between gap-3 p-4 md:p-5 bg-surface border border-border-subtle rounded-xl hover:border-border-strong hover:-translate-y-0.5 transition-all duration-300 group"
             >
               <div className="flex items-center gap-3 md:gap-5">
-                <div className="p-2.5 bg-gray-800 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                <div className="p-2.5 bg-surface-2 rounded-lg">
+                  <TrendingUp className="w-5 h-5 text-accent" />
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="text-white font-semibold text-lg">{task.ticker}</span>
+                    <span className="text-text-primary font-semibold text-lg">{task.ticker}</span>
                     {task.signal && (
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          signalColor[task.signal] || 'text-gray-400 bg-gray-800'
+                          signalColor[task.signal] || 'text-text-secondary bg-surface-2'
                         }`}
                       >
                         {task.signal}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 mt-1 text-sm text-text-faint">
                     <span>{task.trade_date}</span>
                     <span>|</span>
                     <span>
@@ -147,14 +150,14 @@ export default function Reports() {
                   onClick={(e) =>
                     handleDownload(task.id, task.ticker, task.trade_date, e)
                   }
-                  className="p-2 text-gray-500 hover:text-emerald-400 transition-colors"
+                  className="p-2 text-text-faint hover:text-accent transition-colors"
                   title="Download report"
                 >
                   <Download className="w-4 h-4" />
                 </button>
                 <button
                   onClick={(e) => handleDelete(task.id, e)}
-                  className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                  className="p-2 text-text-faint hover:text-red-400 transition-colors"
                   title="Delete report"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -170,17 +173,17 @@ export default function Reports() {
           <button
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 disabled:opacity-50"
+            className="px-4 py-2 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-secondary disabled:opacity-50 hover:border-border-strong transition-colors"
           >
             Previous
           </button>
-          <span className="text-gray-500 text-sm">
+          <span className="text-text-faint text-sm">
             Page {page} of {Math.ceil(total / 20)}
           </span>
           <button
             disabled={page >= Math.ceil(total / 20)}
             onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 disabled:opacity-50"
+            className="px-4 py-2 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-secondary disabled:opacity-50 hover:border-border-strong transition-colors"
           >
             Next
           </button>

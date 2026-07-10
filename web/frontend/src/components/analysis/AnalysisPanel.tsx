@@ -35,8 +35,8 @@ export default function AnalysisPanel() {
 
   return (
     <div className="flex flex-col overflow-hidden">
-      <div className="p-4 border-b border-gray-800">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="p-4 border-b border-border-subtle">
+        <h3 className="text-sm font-semibold text-text-faint uppercase tracking-wider">
           Analysis Report
         </h3>
       </div>
@@ -45,35 +45,35 @@ export default function AnalysisPanel() {
         {latestContent ? (
           <div>
             {latestSection && (
-              <h4 className="text-lg font-semibold text-emerald-400 mb-4">
+              <h4 className="text-lg font-semibold text-accent mb-4" style={{ fontFamily: 'var(--font-serif)' }}>
                 {SECTION_TITLES[latestSection] || latestSection}
               </h4>
             )}
-            <div className="prose prose-invert prose-sm max-w-none">
+            <div className="prose prose-themed prose-sm max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {latestContent}
               </ReactMarkdown>
             </div>
           </div>
         ) : (
-          <div className="text-gray-600 text-center py-16">
+          <div className="text-text-faint text-center py-16">
             <p>Waiting for analysis report...</p>
             <p className="text-xs mt-2">Reports will appear as agents complete their work</p>
           </div>
         )}
 
         {availableSections.length > 1 && (
-          <div className="mt-8 pt-6 border-t border-gray-800">
-            <h4 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">
+          <div className="mt-8 pt-6 border-t border-border-subtle">
+            <h4 className="text-sm font-semibold text-text-faint mb-4 uppercase tracking-wider">
               All Reports
             </h4>
             <div className="space-y-6">
               {availableSections.filter((k) => k !== latestSection).map((key) => (
                 <div key={key}>
-                  <h5 className="text-md font-semibold text-blue-400 mb-2">
+                  <h5 className="text-md font-semibold text-accent-2 mb-2" style={{ fontFamily: 'var(--font-serif)' }}>
                     {SECTION_TITLES[key] || key}
                   </h5>
-                  <div className="prose prose-invert prose-sm max-w-none">
+                  <div className="prose prose-themed prose-sm max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {reportSections[key]}
                     </ReactMarkdown>

@@ -120,21 +120,21 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
         </div>
       )}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-text-secondary mb-2">
           Ticker Symbol <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          className="w-full px-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
           placeholder="e.g. AAPL, 0700.HK, BTC-USD"
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-text-secondary mb-2">
           Search by company name
         </label>
         <div className="flex gap-2">
@@ -148,14 +148,14 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
                 handleLookup()
               }
             }}
-            className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            className="flex-1 px-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
             placeholder="e.g. Apple, 腾讯, Tesla, 茅台"
           />
           <button
             type="button"
             onClick={handleLookup}
             disabled={looking || !companyName.trim()}
-            className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+            className="px-4 py-2.5 bg-surface-2 hover:bg-surface border border-border-subtle hover:border-accent/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-primary text-sm font-medium rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             {looking ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -175,53 +175,53 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
                 key={`${candidate.ticker}-${index}`}
                 type="button"
                 onClick={() => pickCandidate(candidate)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-emerald-500/50 rounded-lg text-left transition-colors"
+                className="w-full flex items-center justify-between gap-3 px-3 py-2 bg-surface-2 hover:bg-surface border border-border-subtle hover:border-accent/50 rounded-lg text-left transition-colors"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-medium text-white shrink-0">
+                  <span className="font-medium text-text-primary shrink-0" style={{ fontFamily: 'var(--font-mono)' }}>
                     {candidate.ticker}
                   </span>
-                  <span className="text-gray-400 text-sm truncate">
+                  <span className="text-text-secondary text-sm truncate">
                     {candidate.name}
                   </span>
                   {candidate.exchange && (
-                    <span className="text-gray-500 text-xs shrink-0 hidden sm:inline">
+                    <span className="text-text-faint text-xs shrink-0 hidden sm:inline">
                       · {candidate.exchange}
                     </span>
                   )}
                 </div>
                 {candidate.validated ? (
-                  <span className="flex items-center gap-1 text-emerald-400 text-xs shrink-0">
+                  <span className="flex items-center gap-1 text-accent text-xs shrink-0">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Verified
                   </span>
                 ) : (
-                  <span className="text-gray-500 text-xs shrink-0">Unverified</span>
+                  <span className="text-text-faint text-xs shrink-0">Unverified</span>
                 )}
               </button>
             ))}
           </div>
         )}
         {!looking && !lookupError && hasSearched && candidates.length === 0 && (
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-text-faint">
             No results — try a more complete name or the English name.
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Analysis Date</label>
+        <label className="block text-sm font-medium text-text-secondary mb-2">Analysis Date</label>
         <input
           type="date"
           value={tradeDate}
           onChange={(e) => setTradeDate(e.target.value)}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          className="w-full px-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-3">Analyst Team</label>
+        <label className="block text-sm font-medium text-text-secondary mb-3">Analyst Team</label>
         <div className="grid grid-cols-2 gap-2 md:gap-3">
           {ANALYST_OPTIONS.map(({ value, label }) => (
             <button
@@ -230,8 +230,8 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
               onClick={() => toggleAnalyst(value)}
               className={`px-3 py-2.5 md:px-4 md:py-3 rounded-lg border text-sm font-medium transition-colors ${
                 analysts.includes(value)
-                  ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                  ? 'bg-accent/10 border-accent/50 text-accent'
+                  : 'bg-surface-2 border-border-subtle text-text-secondary hover:border-border-strong'
               }`}
             >
               {label}
@@ -241,7 +241,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-3">Research Depth</label>
+        <label className="block text-sm font-medium text-text-secondary mb-3">Research Depth</label>
         <div className="grid grid-cols-2 gap-2 md:gap-3">
           {DEPTH_OPTIONS.map(({ value, label }) => (
             <button
@@ -250,8 +250,8 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
               onClick={() => setResearchDepth(value)}
               className={`px-3 py-2.5 md:px-4 md:py-3 rounded-lg border text-sm font-medium transition-colors ${
                 researchDepth === value
-                  ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                  ? 'bg-accent/10 border-accent/50 text-accent'
+                  : 'bg-surface-2 border-border-subtle text-text-secondary hover:border-border-strong'
               }`}
             >
               {label}
@@ -261,7 +261,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">LLM Provider</label>
+        <label className="block text-sm font-medium text-text-secondary mb-2">LLM Provider</label>
         <Select
           value={llmProvider}
           options={LLM_PROVIDERS}
@@ -270,7 +270,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Output Language</label>
+        <label className="block text-sm font-medium text-text-secondary mb-2">Output Language</label>
         <Select
           value={outputLanguage}
           options={OUTPUT_LANGUAGES}
@@ -281,7 +281,7 @@ export default function ConfigForm({ onSubmit }: ConfigFormProps) {
       <button
         type="submit"
         disabled={loading || analysts.length === 0}
-        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full py-3 bg-gradient-to-r from-accent to-accent-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-bg font-medium rounded-lg transition-opacity flex items-center justify-center gap-2"
       >
         {loading ? (
           <>

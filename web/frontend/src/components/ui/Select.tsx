@@ -40,16 +40,16 @@ export default function Select<T extends string | number>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 flex items-center justify-between"
+        className="w-full px-4 py-3 bg-surface-2 border border-border-subtle rounded-lg text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors flex items-center justify-between"
       >
         <span className="text-sm font-medium">{selected?.label}</span>
         <ChevronDown
-          className={`w-5 h-5 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-text-faint transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute z-10 w-full mt-1 bg-surface-2 border border-border-strong rounded-lg shadow-xl overflow-hidden">
           {options.map((option) => {
             const isSelected = option.value === value
             return (
@@ -62,8 +62,8 @@ export default function Select<T extends string | number>({
                 }}
                 className={`w-full px-4 py-3 text-left text-sm transition-colors ${
                   isSelected
-                    ? 'text-emerald-400 bg-emerald-500/10'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                    ? 'text-accent bg-accent/10'
+                    : 'text-text-secondary hover:bg-surface hover:text-text-primary'
                 }`}
               >
                 {option.label}

@@ -23,7 +23,7 @@ const statusText: Record<string, string> = {
 export default function AgentProgress({ agentStatus, teams }: AgentProgressProps) {
   return (
     <div className="flex flex-col overflow-auto p-4">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+      <h3 className="text-sm font-semibold text-text-faint uppercase tracking-wider mb-4">
         Agent Progress
       </h3>
 
@@ -33,7 +33,7 @@ export default function AgentProgress({ agentStatus, teams }: AgentProgressProps
 
         return (
           <div key={team} className="mb-4">
-            <div className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">
+            <div className="text-xs font-medium text-text-faint mb-2 uppercase tracking-wider">
               {team}
             </div>
             <div className="space-y-1">
@@ -42,10 +42,10 @@ export default function AgentProgress({ agentStatus, teams }: AgentProgressProps
                 return (
                   <div
                     key={agent}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-gray-800/50"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-surface-2/50"
                   >
                     {statusIcon[status]}
-                    <span className="text-sm text-gray-300 flex-1">{agent}</span>
+                    <span className="text-sm text-text-secondary flex-1">{agent}</span>
                     <span
                       className={`text-xs ${
                         status === 'in_progress'
@@ -54,7 +54,7 @@ export default function AgentProgress({ agentStatus, teams }: AgentProgressProps
                           ? 'text-emerald-400'
                           : status === 'error'
                           ? 'text-red-400'
-                          : 'text-gray-500'
+                          : 'text-text-faint'
                       }`}
                     >
                       {statusText[status]}

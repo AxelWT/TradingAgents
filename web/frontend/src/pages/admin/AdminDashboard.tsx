@@ -90,14 +90,17 @@ export default function AdminDashboard() {
     : []
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 relative z-1">
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Admin Panel</h1>
-        <p className="text-gray-500 mt-1">System overview & access control</p>
+        <div className="section-tag mb-2">Administration</div>
+        <h1 className="text-2xl md:text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          Admin Panel
+        </h1>
+        <p className="text-text-secondary mt-1">System overview & access control</p>
       </div>
 
       {loading ? (
-        <div className="text-gray-500 text-center py-12">Loading...</div>
+        <div className="text-text-secondary text-center py-12">Loading...</div>
       ) : error ? (
         <div className="text-red-400 text-center py-12">{error}</div>
       ) : stats ? (
@@ -106,20 +109,22 @@ export default function AdminDashboard() {
             {statCards.map(({ label, value, icon: Icon, color }) => (
               <div
                 key={label}
-                className="flex items-center gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl"
+                className="surface-card flex items-center gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl"
               >
                 <div className={`p-3 rounded-lg ${color}`}>
                   <Icon className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{value}</p>
-                  <p className="text-gray-500 text-sm">{label}</p>
+                  <p className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-mono)' }}>
+                    {value}
+                  </p>
+                  <p className="text-text-faint text-sm">{label}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl mb-8">
+          <div className="surface-card p-4 md:p-6 bg-surface border border-border-subtle rounded-xl mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {stats.access_mode === 'whitelist' ? (
@@ -128,8 +133,8 @@ export default function AdminDashboard() {
                   <Unlock className="w-5 h-5 text-emerald-400" />
                 )}
                 <div>
-                  <h3 className="text-white font-medium">Access Mode</h3>
-                  <p className="text-gray-500 text-sm">
+                  <h3 className="text-text-primary font-medium">Access Mode</h3>
+                  <p className="text-text-faint text-sm">
                     {stats.access_mode === 'whitelist'
                       ? 'Whitelist mode: only whitelisted users can log in'
                       : 'Open mode: all non-blacklisted users can log in'}
@@ -149,7 +154,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={handleToggleAccessMode}
                   disabled={switching}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-secondary hover:border-border-strong transition-colors disabled:opacity-50"
                 >
                   Switch to {stats.access_mode === 'open' ? 'Whitelist' : 'Open'}
                 </button>
@@ -159,16 +164,16 @@ export default function AdminDashboard() {
 
           <Link
             to="/admin/users"
-            className="flex items-center gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors group"
+            className="surface-card flex items-center gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl hover:border-accent/50 hover:-translate-y-0.5 transition-all duration-300 group"
           >
-            <div className="p-3 bg-emerald-500/10 rounded-lg">
-              <Users className="w-6 h-6 text-emerald-400" />
+            <div className="p-3 bg-accent/10 rounded-lg">
+              <Users className="w-6 h-6 text-accent" />
             </div>
             <div>
-              <h3 className="text-white font-medium group-hover:text-emerald-400 transition-colors">
+              <h3 className="text-text-primary font-medium group-hover:text-accent transition-colors">
                 User Management
               </h3>
-              <p className="text-gray-500 text-sm">View all registered users, manage blacklist/whitelist, delete users</p>
+              <p className="text-text-faint text-sm">View all registered users, manage blacklist/whitelist, delete users</p>
             </div>
           </Link>
         </>

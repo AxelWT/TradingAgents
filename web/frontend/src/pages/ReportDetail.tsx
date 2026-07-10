@@ -45,7 +45,7 @@ export default function ReportDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-text-secondary">
         Loading report...
       </div>
     )
@@ -53,10 +53,10 @@ export default function ReportDetail() {
 
   if (!task) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500">
-        <FileText className="w-12 h-12 mb-4 text-gray-600" />
+      <div className="flex flex-col items-center justify-center h-full text-text-secondary">
+        <FileText className="w-12 h-12 mb-4 text-text-faint" />
         <p>Report not found</p>
-        <Link to="/reports" className="text-emerald-400 hover:text-emerald-300 mt-4">
+        <Link to="/reports" className="text-accent hover:opacity-80 mt-4">
           Back to Reports
         </Link>
       </div>
@@ -70,29 +70,31 @@ export default function ReportDetail() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 md:p-6 border-b border-gray-800">
+    <div className="h-full flex flex-col relative z-1">
+      <div className="p-4 md:p-6 border-b border-border-subtle">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/reports')}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
+              className="p-2 text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-                <h1 className="text-xl md:text-2xl font-bold text-white">{task.ticker}</h1>
+                <TrendingUp className="w-5 h-5 text-accent" />
+                <h1 className="text-xl md:text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                  {task.ticker}
+                </h1>
                 {task.signal && (
                   <span
-                    className={`text-lg font-bold ${signalColor[task.signal] || 'text-gray-400'}`}
+                    className={`text-lg font-bold ${signalColor[task.signal] || 'text-text-secondary'}`}
                   >
                     {task.signal}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+              <div className="flex items-center gap-3 mt-1 text-sm text-text-faint">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{task.trade_date}</span>
                 {task.completed_at && (
@@ -107,7 +109,7 @@ export default function ReportDetail() {
 
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-secondary hover:border-accent/50 hover:text-accent transition-colors"
           >
             <Download className="w-4 h-4" />
             Download
@@ -118,7 +120,9 @@ export default function ReportDetail() {
       <div className="flex-1 overflow-auto p-4 md:p-8">
         {task.agent_reports && Object.keys(task.agent_reports).length > 0 && (
           <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-300 mb-6">Agent Reports</h2>
+            <h2 className="text-lg font-semibold text-text-secondary mb-6" style={{ fontFamily: 'var(--font-serif)' }}>
+              Agent Reports
+            </h2>
             <div className="space-y-6">
               {Object.entries(task.agent_reports).map(([section, content]) => {
                 const titles: Record<string, string> = {
@@ -133,12 +137,12 @@ export default function ReportDetail() {
                 return (
                   <div
                     key={section}
-                    className="bg-gray-900 border border-gray-800 rounded-xl p-4 md:p-6"
+                    className="surface-card bg-surface border border-border-subtle rounded-xl p-4 md:p-6"
                   >
-                    <h3 className="text-md font-semibold text-emerald-400 mb-4">
+                    <h3 className="text-md font-semibold text-accent mb-4" style={{ fontFamily: 'var(--font-serif)' }}>
                       {titles[section] || section}
                     </h3>
-                    <div className="prose prose-invert prose-sm max-w-none">
+                    <div className="prose prose-themed prose-sm max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {content}
                       </ReactMarkdown>
@@ -152,9 +156,11 @@ export default function ReportDetail() {
 
         {task.final_report && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-300 mb-6">Final Decision</h2>
-            <div className="bg-gray-900 border border-emerald-500/20 rounded-xl p-4 md:p-6">
-              <div className="prose prose-invert max-w-none">
+            <h2 className="text-lg font-semibold text-text-secondary mb-6" style={{ fontFamily: 'var(--font-serif)' }}>
+              Final Decision
+            </h2>
+            <div className="surface-card bg-surface border border-accent/20 rounded-xl p-4 md:p-6">
+              <div className="prose prose-themed max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {task.final_report}
                 </ReactMarkdown>

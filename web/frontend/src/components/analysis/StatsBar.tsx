@@ -14,27 +14,27 @@ export default function StatsBar() {
     : '--:--'
 
   return (
-    <div className="flex flex-wrap items-center gap-3 md:gap-6 px-4 md:px-6 py-3 bg-gray-900/50 border-b border-gray-800 text-sm">
-      <div className="flex items-center gap-2 text-gray-400">
+    <div className="flex flex-wrap items-center gap-3 md:gap-6 px-4 md:px-6 py-3 bg-surface/50 border-b border-border-subtle text-sm">
+      <div className="flex items-center gap-2 text-text-secondary">
         <TrendingUp className="w-4 h-4" />
         <span>
           Agents: {agentsCompleted}/{agentsTotal || '-'}
         </span>
       </div>
 
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-text-secondary">
         <FileText className="w-4 h-4" />
         <span>
           Reports: {stats?.reports_done || 0}/{stats?.reports_total || 7}
         </span>
       </div>
 
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-text-secondary">
         <Clock className="w-4 h-4" />
-        <span>{elapsed}</span>
+        <span style={{ fontFamily: 'var(--font-mono)' }}>{elapsed}</span>
       </div>
 
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-text-secondary">
         <Cpu className="w-4 h-4" />
         <span
           className={
@@ -44,7 +44,7 @@ export default function StatsBar() {
               ? 'text-emerald-400'
               : status === 'failed'
               ? 'text-red-400'
-              : 'text-gray-500'
+              : 'text-text-faint'
           }
         >
           {status === 'running' ? 'Running...' : status === 'completed' ? 'Completed' : status === 'failed' ? 'Failed' : 'Idle'}

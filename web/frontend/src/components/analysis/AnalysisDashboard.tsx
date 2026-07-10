@@ -38,8 +38,8 @@ export default function AnalysisDashboard() {
       )}
 
       {status === 'completed' && signal && (
-        <div className="mx-4 md:mx-6 mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-center">
-          <span className="text-gray-400 mr-2">Final Signal:</span>
+        <div className="surface-card mx-4 md:mx-6 mt-4 p-4 bg-accent/5 border border-accent/20 rounded-lg text-center">
+          <span className="text-text-secondary mr-2">Final Signal:</span>
           <span
             className={`text-xl font-bold ${
               signal === 'Buy'
@@ -51,21 +51,21 @@ export default function AnalysisDashboard() {
           >
             {signal}
           </span>
-          <span className="text-gray-500 ml-4">
+          <span className="text-text-faint ml-4">
             {agentsCompleted}/{agentsTotal} agents completed
           </span>
         </div>
       )}
 
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
-        <div className="border-b md:border-b-0 md:border-r border-gray-800 flex flex-col md:overflow-hidden md:w-[360px] shrink-0">
+        <div className="border-b md:border-b-0 md:border-r border-border-subtle flex flex-col md:overflow-hidden md:w-[360px] shrink-0">
           <AgentProgress
             agentStatus={activeAgents}
             teams={ALL_AGENTS_STRUCTURED}
           />
         </div>
 
-        <div className="border-b md:border-b-0 md:border-r border-gray-800 flex flex-col md:overflow-hidden md:w-[400px] shrink-0">
+        <div className="border-b md:border-b-0 md:border-r border-border-subtle flex flex-col md:overflow-hidden md:w-[400px] shrink-0">
           <MessageFeed />
         </div>
 

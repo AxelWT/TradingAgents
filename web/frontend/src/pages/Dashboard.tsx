@@ -53,61 +53,64 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 relative z-1">
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome to TradingAgents</p>
+        <div className="section-tag mb-2">Overview</div>
+        <h1 className="text-2xl md:text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+          Dashboard
+        </h1>
+        <p className="text-text-secondary mt-1">Welcome to TradingAgents</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
         <button
           onClick={() => navigate('/analysis')}
-          className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-emerald-500/50 transition-colors group"
+          className="surface-card flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl hover:border-accent/50 hover:-translate-y-1 transition-all duration-300 group text-left"
         >
-          <div className="p-3 bg-emerald-500/10 rounded-lg">
-            <Play className="w-6 h-6 text-emerald-400" />
+          <div className="p-3 bg-accent/10 rounded-lg">
+            <Play className="w-6 h-6 text-accent" />
           </div>
-          <div className="text-left">
-            <h3 className="text-white font-medium group-hover:text-emerald-400 transition-colors">
+          <div>
+            <h3 className="text-text-primary font-medium group-hover:text-accent transition-colors">
               New Analysis
             </h3>
-            <p className="text-gray-500 text-sm">Start a trading analysis</p>
+            <p className="text-text-faint text-sm">Start a trading analysis</p>
           </div>
         </button>
 
         <Link
           to="/reports"
-          className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-blue-500/50 transition-colors group"
+          className="surface-card flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl hover:border-accent-2/50 hover:-translate-y-1 transition-all duration-300 group"
         >
-          <div className="p-3 bg-blue-500/10 rounded-lg">
-            <FileText className="w-6 h-6 text-blue-400" />
+          <div className="p-3 bg-accent-2/10 rounded-lg">
+            <FileText className="w-6 h-6 text-accent-2" />
           </div>
           <div>
-            <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">
+            <h3 className="text-text-primary font-medium group-hover:text-accent-2 transition-colors">
               Reports
             </h3>
-            <p className="text-gray-500 text-sm">View past analyses</p>
+            <p className="text-text-faint text-sm">View past analyses</p>
           </div>
         </Link>
 
-        <div className="flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-gray-900 border border-gray-800 rounded-xl">
+        <div className="surface-card flex items-center gap-3 md:gap-4 p-4 md:p-6 bg-surface border border-border-subtle rounded-xl">
           <div className="p-3 bg-purple-500/10 rounded-lg">
             <TrendingUp className="w-6 h-6 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-white font-medium">Multi-Agent</h3>
-            <p className="text-gray-500 text-sm">8 specialized agents</p>
+            <h3 className="text-text-primary font-medium">Multi-Agent</h3>
+            <p className="text-text-faint text-sm">8 specialized agents</p>
           </div>
         </div>
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Analyses</h2>
+        <h2 className="text-xl font-semibold text-text-primary mb-4">Recent Analyses</h2>
         {loading ? (
-          <div className="text-gray-500 text-center py-12">Loading...</div>
+          <div className="text-text-secondary text-center py-12">Loading...</div>
         ) : recentTasks.length === 0 ? (
-          <div className="text-gray-500 text-center py-12 bg-gray-900 rounded-xl border border-gray-800">
-            <Clock className="w-8 h-8 mx-auto mb-3 text-gray-600" />
+          <div className="text-text-secondary text-center py-12 bg-surface rounded-xl border border-border-subtle">
+            <Clock className="w-8 h-8 mx-auto mb-3 text-text-faint" />
             <p>No analyses yet. Start your first one!</p>
           </div>
         ) : (
@@ -115,7 +118,7 @@ export default function Dashboard() {
             {recentTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-900 border border-gray-800 rounded-lg hover:border-gray-700 transition-colors cursor-pointer"
+                className="flex flex-wrap items-center justify-between gap-3 p-4 bg-surface border border-border-subtle rounded-lg hover:border-border-strong transition-colors cursor-pointer"
                 onClick={() => {
                   if (task.status === 'completed') {
                     navigate(`/reports/${task.id}`)
@@ -126,13 +129,13 @@ export default function Dashboard() {
               >
                 <div className="flex items-center gap-4">
                   <div>
-                    <span className="text-white font-medium">{task.ticker}</span>
-                    <span className="text-gray-500 text-sm ml-3">{task.trade_date}</span>
+                    <span className="text-text-primary font-medium">{task.ticker}</span>
+                    <span className="text-text-faint text-sm ml-3">{task.trade_date}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 md:gap-4">
                   {task.signal && (
-                    <span className={`font-semibold ${signalColor[task.signal] || 'text-gray-400'}`}>
+                    <span className={`font-semibold ${signalColor[task.signal] || 'text-text-secondary'}`}>
                       {task.signal}
                     </span>
                   )}
@@ -145,7 +148,7 @@ export default function Dashboard() {
                   <button
                     onClick={(e) => handleDelete(task.id, e)}
                     disabled={task.status === 'pending' || task.status === 'running'}
-                    className="p-1.5 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500"
+                    className="p-1.5 text-text-faint hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-text-faint"
                     title={
                       task.status === 'pending' || task.status === 'running'
                       ? 'Cannot delete while running'

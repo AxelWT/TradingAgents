@@ -63,19 +63,21 @@ export default function Analysis() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 md:p-6 border-b border-gray-800 flex items-center gap-4">
+    <div className="h-full flex flex-col relative z-1">
+      <div className="p-4 md:p-6 border-b border-border-subtle flex items-center gap-4">
         <button
           onClick={() => navigate('/')}
-          className="p-2 text-gray-400 hover:text-white transition-colors"
+          className="p-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl md:text-2xl font-bold text-white">
+        <h1 className="text-xl md:text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
           {showDashboard ? 'Analysis Running' : 'New Analysis'}
         </h1>
         {taskId && showDashboard && (
-          <span className="text-sm text-gray-500 ml-auto hidden sm:inline">Task: {taskId.slice(0, 8)}...</span>
+          <span className="text-sm text-text-faint ml-auto hidden sm:inline" style={{ fontFamily: 'var(--font-mono)' }}>
+            Task: {taskId.slice(0, 8)}...
+          </span>
         )}
       </div>
 

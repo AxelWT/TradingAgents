@@ -98,15 +98,18 @@ export default function AdminUsers() {
   ]
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 relative z-1">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">User Management</h1>
-          <p className="text-gray-500 mt-1">{total} registered users</p>
+          <div className="section-tag mb-2">Administration</div>
+          <h1 className="text-2xl md:text-3xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+            User Management
+          </h1>
+          <p className="text-text-secondary mt-1">{total} registered users</p>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-faint" />
           <input
             type="text"
             value={search}
@@ -114,7 +117,7 @@ export default function AdminUsers() {
               setSearch(e.target.value)
               setPage(1)
             }}
-            className="pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-full sm:w-64"
+            className="pl-10 pr-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-sm placeholder-text-faint focus:outline-none focus:border-accent w-full sm:w-64 transition-colors"
             placeholder="Search by email..."
           />
         </div>
@@ -130,8 +133,8 @@ export default function AdminUsers() {
             }}
             className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${
               statusFilter === f.value
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                : 'bg-gray-800 text-gray-400 border border-gray-700 hover:text-gray-200'
+                ? 'bg-accent/10 text-accent border border-accent/30'
+                : 'bg-surface-2 text-text-secondary border border-border-subtle hover:text-text-primary hover:border-border-strong'
             }`}
           >
             {f.label}
@@ -140,17 +143,17 @@ export default function AdminUsers() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 text-center py-12">Loading...</div>
+        <div className="text-text-secondary text-center py-12">Loading...</div>
       ) : users.length === 0 ? (
-        <div className="text-gray-500 text-center py-16 bg-gray-900 rounded-xl border border-gray-800">
+        <div className="text-text-secondary text-center py-16 bg-surface rounded-xl border border-border-subtle">
           <p>No matching users found</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl">
+          <div className="overflow-x-auto bg-surface border border-border-subtle rounded-xl">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800 text-gray-500">
+                <tr className="border-b border-border-subtle text-text-faint">
                   <th className="text-left px-4 py-3 font-medium">Email</th>
                   <th className="text-left px-4 py-3 font-medium">Registered</th>
                   <th className="text-left px-4 py-3 font-medium">Tasks</th>
@@ -162,11 +165,11 @@ export default function AdminUsers() {
                 {users.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+                    className="border-b border-border-subtle/50 hover:bg-surface-2/30 transition-colors"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-white">{user.email}</span>
+                        <span className="text-text-primary">{user.email}</span>
                         {user.is_admin && (
                           <span className="px-2 py-0.5 rounded-full text-xs font-medium text-yellow-400 bg-yellow-400/10">
                             Admin
@@ -174,12 +177,14 @@ export default function AdminUsers() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-400">
+                    <td className="px-4 py-3 text-text-secondary">
                       {user.created_at
                         ? new Date(user.created_at).toLocaleDateString()
                         : '-'}
                     </td>
-                    <td className="px-4 py-3 text-gray-400">{user.task_count}</td>
+                    <td className="px-4 py-3 text-text-secondary" style={{ fontFamily: 'var(--font-mono)' }}>
+                      {user.task_count}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {user.is_active ? (
@@ -201,7 +206,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {actionLoading === user.id ? (
-                          <span className="text-gray-500 text-xs px-2">Processing...</span>
+                          <span className="text-text-faint text-xs px-2">Processing...</span>
                         ) : (
                           <>
                             {!user.is_admin && (
@@ -213,7 +218,7 @@ export default function AdminUsers() {
                                         adminApi.addToBlacklist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-red-400 transition-colors"
                                     title="Add to blacklist"
                                   >
                                     <Ban className="w-4 h-4" />
@@ -225,7 +230,7 @@ export default function AdminUsers() {
                                         adminApi.removeFromBlacklist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-emerald-400 transition-colors"
                                     title="Remove from blacklist"
                                   >
                                     <CheckCircle className="w-4 h-4" />
@@ -238,7 +243,7 @@ export default function AdminUsers() {
                                         adminApi.removeFromWhitelist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-text-primary transition-colors"
                                     title="Remove from whitelist"
                                   >
                                     <ShieldOff className="w-4 h-4" />
@@ -250,7 +255,7 @@ export default function AdminUsers() {
                                         adminApi.addToWhitelist(user.id)
                                       )
                                     }
-                                    className="p-1.5 text-gray-500 hover:text-purple-400 transition-colors"
+                                    className="p-1.5 text-text-faint hover:text-purple-400 transition-colors"
                                     title="Add to whitelist"
                                   >
                                     <Shield className="w-4 h-4" />
@@ -260,7 +265,7 @@ export default function AdminUsers() {
                             )}
                             <button
                               onClick={() => handleToggleAdmin(user)}
-                              className="p-1.5 text-gray-500 hover:text-yellow-400 transition-colors"
+                              className="p-1.5 text-text-faint hover:text-yellow-400 transition-colors"
                               title={user.is_admin ? 'Revoke admin' : 'Grant admin'}
                             >
                               <UserCog className="w-4 h-4" />
@@ -268,7 +273,7 @@ export default function AdminUsers() {
                             {!user.is_admin && (
                               <button
                                 onClick={() => handleDelete(user)}
-                                className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                className="p-1.5 text-text-faint hover:text-red-400 transition-colors"
                                 title="Delete user"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -289,17 +294,17 @@ export default function AdminUsers() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 disabled:opacity-50"
+                className="p-2 bg-surface-2 border border-border-subtle rounded-lg text-text-secondary disabled:opacity-50 hover:border-border-strong transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-gray-500 text-sm">
+              <span className="text-text-faint text-sm">
                 Page {page} of {totalPages}
               </span>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="p-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 disabled:opacity-50"
+                className="p-2 bg-surface-2 border border-border-subtle rounded-lg text-text-secondary disabled:opacity-50 hover:border-border-strong transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

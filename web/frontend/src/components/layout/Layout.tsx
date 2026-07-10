@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { authApi } from '../../api/auth'
 import { BarChart3, Play, FileText, LogOut, TrendingUp, Menu, X, Shield } from 'lucide-react'
+import ThemeToggle from '../ui/ThemeToggle'
 
 export default function Layout() {
   const { user, clearAuth } = useAuth()
@@ -31,7 +32,12 @@ export default function Layout() {
   ]
 
   return (
-    <div className="flex h-screen bg-gray-950 text-gray-100">
+    <div className="relative flex h-screen bg-bg text-text-primary">
+      <div className="bg-grid" />
+      <div className="bg-glow" />
+      <div className="bg-glow" />
+      <div className="bg-glow" />
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -41,21 +47,25 @@ export default function Layout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 flex flex-col transform transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border-subtle flex flex-col transform transition-transform duration-200 md:static md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-6 border-b border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <TrendingUp className="w-8 h-8 text-emerald-500" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-bg" />
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-white">TradingAgents</h1>
-              <p className="text-xs text-gray-500">Multi-Agent Framework</p>
+              <h1 className="text-lg font-bold text-text-primary" style={{ fontFamily: 'var(--font-serif)' }}>
+                TradingAgents
+              </h1>
+              <p className="text-xs text-text-faint">Multi-Agent Framework</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 text-gray-400 hover:text-white transition-colors md:hidden"
+            className="p-1.5 text-text-secondary hover:text-text-primary transition-colors md:hidden"
           >
             <X className="w-5 h-5" />
           </button>
@@ -71,8 +81,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
                 }`
               }
             >
@@ -82,14 +92,15 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-border-subtle">
           <div className="flex items-center justify-between px-4 py-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-300 truncate">{user?.email}</p>
+              <p className="text-sm text-text-primary truncate">{user?.email}</p>
             </div>
+            <ThemeToggle />
             <button
               onClick={handleLogout}
-              className="p-2 text-gray-500 hover:text-gray-300 transition-colors"
+              className="p-2 text-text-faint hover:text-text-primary transition-colors"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -98,18 +109,21 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-1">
         {/* Mobile top bar */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800 md:hidden">
+        <div className="flex items-center gap-3 px-4 py-3 bg-surface border-b border-border-subtle md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
           >
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-bold text-white">TradingAgents</span>
+            <TrendingUp className="w-5 h-5 text-accent" />
+            <span className="text-sm font-bold text-text-primary">TradingAgents</span>
+          </div>
+          <div className="ml-auto">
+            <ThemeToggle />
           </div>
         </div>
 
