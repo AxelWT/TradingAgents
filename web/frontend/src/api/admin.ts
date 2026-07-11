@@ -92,3 +92,89 @@ export const adminApi = {
     return data
   },
 }
+
+export interface ScheduledJob {
+  id: string
+  name: string
+  ticker: string
+  asset_type: string
+  analysts: string[] | null
+  research_depth: number
+  llm_provider: string
+  backend_url: string | null
+  quick_think_llm: string | null
+  deep_think_llm: string | null
+  output_language: string
+  google_thinking_level: string | null
+  openai_reasoning_effort: string | null
+  anthropic_effort: string | null
+  cron_expr: string
+  enabled: boolean
+  created_by: string
+  created_at: string | null
+  next_run_at: string | null
+  last_run_at: string | null
+  last_task_id: string | null
+  last_error: string | null
+}
+
+export interface ScheduledJobListResponse {
+  jobs: ScheduledJob[]
+  total: number
+}
+
+export interface ScheduledJobCreateParams {
+  name: string
+  ticker: string
+  asset_type?: string
+  analysts?: string[]
+  research_depth?: number
+  llm_provider?: string
+  backend_url?: string
+  quick_think_llm?: string
+  deep_think_llm?: string
+  output_language?: string
+  google_thinking_level?: string
+  openai_reasoning_effort?: string
+  anthropic_effort?: string
+  cron_expr: string
+  enabled?: boolean
+}
+
+export type ScheduledJobUpdateParams = Partial<ScheduledJobCreateParams>
+
+export interface ScheduledJobRunResponse {
+  task_id: string
+  message: string
+}
+
+export const scheduledJobsApi = {
+  list: async (page = 1, pageSize = 20): Promise<ScheduledJobListResponse> => {
+    const { data } = await api.get('/api/admin/scheduled-jobs', { params: { page, page_size: pageSize } })
+    return data
+  },
+
+  get: async (jobId: string): Promise<ScheduledJob> => {
+    const { data } = await api.get(`/api/admin/scheduled-jobs/${jobId}`)
+    return data
+  },
+
+  create: async (params: ScheduledJobCreateParams): Promise<ScheduledJob> => {
+    const { data } = await api.post('/api/admin/scheduled-jobs', params)
+    return data
+  },
+
+  update: async (jobId: string, params: ScheduledJobUpdateParams): Promise<ScheduledJob> => {
+    const { data } = await api.patch(`/api/admin/scheduled-jobs/${jobId}`, params)
+    return data
+  },
+
+  delete: async (jobId: string): Promise<void> => {
+    await api.delete(`/api/admin/scheduled-jobs/${jobId}`)
+  },
+
+  run: async (jobId: string): Promise<ScheduledJobRunResponse> => {
+    const { data } = await api.post(`/api/admin/scheduled-jobs/${jobId}/run`)
+    return data
+  },
+}

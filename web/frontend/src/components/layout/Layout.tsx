@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { authApi } from '../../api/auth'
-import { BarChart3, Play, FileText, LogOut, TrendingUp, Menu, X, Shield } from 'lucide-react'
+import { BarChart3, Play, FileText, LogOut, TrendingUp, Menu, X, Shield, Clock } from 'lucide-react'
 import ThemeToggle from '../ui/ThemeToggle'
 
 export default function Layout() {
@@ -26,6 +26,7 @@ export default function Layout() {
     { to: '/reports', icon: FileText, label: 'Reports' },
     ...(user?.is_admin
       ? [
+          { to: '/admin/scheduled-jobs', icon: Clock, label: 'Scheduled' },
           { to: '/admin', icon: Shield, label: 'Admin' },
         ]
       : []),
@@ -76,7 +77,7 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === '/' || to === '/admin'}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${

@@ -10,6 +10,7 @@ import ReportDetail from './pages/ReportDetail'
 import MultiAgent from './pages/MultiAgent'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
+import AdminScheduledJobs from './pages/admin/AdminScheduledJobs'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminUsers />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/scheduled-jobs"
+          element={
+            <AdminRoute>
+              <AdminScheduledJobs />
             </AdminRoute>
           }
         />

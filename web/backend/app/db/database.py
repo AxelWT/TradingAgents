@@ -1,8 +1,8 @@
 import logging
+from collections.abc import Generator
 
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
 
@@ -56,3 +56,13 @@ def migrate_schema():
             if col_name not in existing_columns:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}"))
                 logger.info("migrate_schema: added column users.%s", col_name)
+
+    # Add scheduled_job_id column to analysis_tasks if missing (introduced with
+    # the scheduled-jobs feature). The scheduled_jobs table is created by
+    # Base.metadata.create_all above, so only the FK column needs backfilling.
+    if inspector.has_table("analysis_tasks"):
+        task_columns = {col["name"] for col in inspector.get_columns("analysis_tasks")}
+        with engine.begin() as conn:
+            if "scheduled_job_id" not in task_columns:
+                conn.execute(text("ALTER TABLE analysis_tasks ADD COLUMN scheduled_job_id VARCHAR"))
+                logger.info("migrate_schema: added column analysis_tasks.scheduled_job_id")

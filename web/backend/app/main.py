@@ -11,15 +11,17 @@ from fastapi.staticfiles import StaticFiles
 
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-from app.config import get_settings
-from app.db.database import init_db, create_tables
-from app.auth.router import router as auth_router
-from app.analysis.router import router as analysis_router
-from app.reports.router import router as reports_router
-from app.ticker.router import router as ticker_router
 from app.admin.router import router as admin_router
+from app.analysis.router import router as analysis_router
+from app.auth.router import router as auth_router
 from app.auth.security import hash_password
+from app.config import get_settings
+from app.db.database import create_tables, init_db
 from app.db.models import User
+from app.reports.router import router as reports_router
+from app.scheduler.router import router as scheduler_router
+from app.scheduler.service import start_scheduler, stop_scheduler
+from app.ticker.router import router as ticker_router
 
 
 def bootstrap_admin():
@@ -63,7 +65,9 @@ async def lifespan(app: FastAPI):
     init_db()
     create_tables()
     bootstrap_admin()
+    start_scheduler()
     yield
+    await stop_scheduler()
 
 
 app = FastAPI(
@@ -87,6 +91,7 @@ app.include_router(analysis_router, prefix=settings.API_PREFIX)
 app.include_router(reports_router, prefix=settings.API_PREFIX)
 app.include_router(ticker_router, prefix=settings.API_PREFIX)
 app.include_router(admin_router, prefix=settings.API_PREFIX)
+app.include_router(scheduler_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/health")

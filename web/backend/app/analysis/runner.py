@@ -1,10 +1,7 @@
 import asyncio
-import json
 import logging
 import time
-import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import WebSocket
 from sqlalchemy.orm import Session
@@ -59,6 +56,24 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+
+
+class _NoOpCallbackAdapter:
+    """Drop-in replacement for WebSocketCallbackAdapter used by headless
+    (scheduled) runs. Every callback is a no-op so the analysis core can run
+    without a live WebSocket attached."""
+
+    def on_agent_start(self, agent_name: str): ...
+    def on_agents_init(self, agent_names: list[str]): ...
+    def on_agent_finish(self, agent_name: str): ...
+    def on_tool_call(self, agent_name: str, tool_name: str, args: dict): ...
+    def on_report_update(self, section: str, content: str): ...
+    def on_stats_update(self, stats: dict): ...
+    def on_message(self, msg_type: str, content: str): ...
+    def on_complete(
+        self, signal: str, rating: str, final_report: str, agent_reports: dict, token_usage: dict
+    ): ...
+    def on_error(self, error: str): ...
 
 
 class WebSocketCallbackAdapter:
@@ -185,7 +200,11 @@ FIXED_AGENTS = {
 
 
 def run_analysis_task(
-    task_id: str, config: dict, user_id: str, loop: asyncio.AbstractEventLoop | None = None
+    task_id: str,
+    config: dict,
+    user_id: str,
+    loop: asyncio.AbstractEventLoop | None = None,
+    headless: bool = False,
 ):
     db: Session = _db_mod.SessionLocal()
     adapter: WebSocketCallbackAdapter | None = None
@@ -198,231 +217,26 @@ def run_analysis_task(
         task.started_at = datetime.now(timezone.utc)
         db.commit()
 
-        logger.info("Waiting for WebSocket connection for task %s", task_id)
-        for _ in range(30):
-            if manager.active.get(task_id):
-                logger.info("WebSocket connected for task %s, starting analysis", task_id)
-                break
-            time.sleep(1)
+        if headless:
+            logger.info("Headless analysis for task %s (no WebSocket)", task_id)
         else:
-            logger.warning(
-                "Timed out waiting for WebSocket for task %s, proceeding without live updates",
-                task_id,
-            )
+            logger.info("Waiting for WebSocket connection for task %s", task_id)
+            for _ in range(30):
+                if manager.active.get(task_id):
+                    logger.info("WebSocket connected for task %s, starting analysis", task_id)
+                    break
+                time.sleep(1)
+            else:
+                logger.warning(
+                    "Timed out waiting for WebSocket for task %s, proceeding without live updates",
+                    task_id,
+                )
 
-        adapter = WebSocketCallbackAdapter(task_id, loop=loop)
-
-        from tradingagents.default_config import DEFAULT_CONFIG
-        from tradingagents.graph.trading_graph import TradingAgentsGraph
-        from tradingagents.graph.analyst_execution import (
-            AnalystWallTimeTracker,
-            build_analyst_execution_plan,
-            get_initial_analyst_node,
-            sync_analyst_tracker_from_chunk,
-        )
-        from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-
-        run_config = DEFAULT_CONFIG.copy()
-        run_config["max_debate_rounds"] = config.get("research_depth", 2)
-        run_config["max_risk_discuss_rounds"] = config.get("research_depth", 2)
-
-        _PROVIDER_DEFAULTS = {
-            "deepseek": {
-                "deep_think_llm": "deepseek-v4-pro",
-                "quick_think_llm": "deepseek-v4-flash",
-            },
-            "openai": {"deep_think_llm": "gpt-4.1", "quick_think_llm": "gpt-4.1-mini"},
-        }
-        provider = config.get("llm_provider", "openai").lower()
-        run_config["llm_provider"] = provider
-        _pd = _PROVIDER_DEFAULTS.get(provider, {})
-        run_config["deep_think_llm"] = config.get("deep_think_llm") or _pd.get(
-            "deep_think_llm", DEFAULT_CONFIG.get("deep_think_llm")
-        )
-        run_config["quick_think_llm"] = config.get("quick_think_llm") or _pd.get(
-            "quick_think_llm", DEFAULT_CONFIG.get("quick_think_llm")
-        )
-        run_config["output_language"] = config.get("output_language", "English")
-        if config.get("backend_url"):
-            run_config["backend_url"] = config["backend_url"]
-        if config.get("google_thinking_level"):
-            run_config["google_thinking_level"] = config["google_thinking_level"]
-        if config.get("openai_reasoning_effort"):
-            run_config["openai_reasoning_effort"] = config["openai_reasoning_effort"]
-        if config.get("anthropic_effort"):
-            run_config["anthropic_effort"] = config["anthropic_effort"]
-
-        selected_analysts = [a for a in ANALYST_ORDER if a in config.get("analysts", ANALYST_ORDER)]
-
-        graph = TradingAgentsGraph(
-            selected_analysts,
-            config=run_config,
-            debug=True,
-            callbacks=[],
+        adapter = (
+            _NoOpCallbackAdapter() if headless else WebSocketCallbackAdapter(task_id, loop=loop)
         )
 
-        instrument_context = graph.resolve_instrument_context(
-            config["ticker"], config.get("asset_type", "stock")
-        )
-        init_agent_state = graph.propagator.create_initial_state(
-            config["ticker"],
-            config["trade_date"],
-            asset_type=config.get("asset_type", "stock"),
-            instrument_context=instrument_context,
-        )
-        args = graph.propagator.get_graph_args()
-
-        all_agent_names = []
-        for a in selected_analysts:
-            all_agent_names.append(ANALYST_AGENT_NAMES[a])
-        for team_agents in FIXED_AGENTS.values():
-            all_agent_names.extend(team_agents)
-        adapter.on_agents_init(all_agent_names)
-
-        first_analyst = ANALYST_AGENT_NAMES.get(selected_analysts[0], "Market Analyst")
-        adapter.on_agent_start(first_analyst)
-
-        report_sections = {}
-        agent_status = {name: "pending" for name in all_agent_names}
-        agent_status[first_analyst] = "in_progress"
-
-        trace = []
-        start_time = time.time()
-
-        for chunk in graph.graph.stream(init_agent_state, **args):
-            for message in chunk.get("messages", []):
-                content = _extract_content(getattr(message, "content", None))
-                if content and content.strip():
-                    if isinstance(message, HumanMessage):
-                        if content.strip() != "Continue":
-                            adapter.on_message("User", content)
-                    elif isinstance(message, AIMessage):
-                        adapter.on_message("Agent", content[:500])
-                    elif isinstance(message, ToolMessage):
-                        adapter.on_message("Data", content[:300])
-
-                if hasattr(message, "tool_calls") and message.tool_calls:
-                    for tc in message.tool_calls:
-                        tool_name = tc["name"] if isinstance(tc, dict) else tc.name
-                        tool_args = tc["args"] if isinstance(tc, dict) else tc.args
-                        adapter.on_tool_call("Agent", tool_name, tool_args)
-
-            found_active = False
-            for analyst_key in selected_analysts:
-                agent_name = ANALYST_AGENT_NAMES[analyst_key]
-                report_key = ANALYST_REPORT_MAP[analyst_key]
-                if chunk.get(report_key):
-                    report_sections[report_key] = chunk[report_key]
-                    adapter.on_report_update(report_key, chunk[report_key])
-                    agent_status[agent_name] = "completed"
-                    adapter.on_agent_finish(agent_name)
-                elif not found_active and agent_status.get(agent_name) != "completed":
-                    if agent_status.get(agent_name) != "in_progress":
-                        adapter.on_agent_start(agent_name)
-                    agent_status[agent_name] = "in_progress"
-                    found_active = True
-
-            if chunk.get("investment_debate_state"):
-                debate = chunk["investment_debate_state"]
-                for name in ["Bull Researcher", "Bear Researcher", "Research Manager"]:
-                    if agent_status.get(name) == "pending":
-                        adapter.on_agent_start(name)
-                        agent_status[name] = "in_progress"
-                if debate.get("judge_decision", "").strip():
-                    for name in ["Bull Researcher", "Bear Researcher", "Research Manager"]:
-                        agent_status[name] = "completed"
-                        adapter.on_agent_finish(name)
-                    report_sections["investment_plan"] = debate["judge_decision"]
-                    adapter.on_report_update("investment_plan", debate["judge_decision"])
-                    adapter.on_agent_start("Trader")
-                    agent_status["Trader"] = "in_progress"
-                elif debate.get("bull_history", "").strip():
-                    adapter.on_report_update(
-                        "investment_plan", f"### Bull\n{debate['bull_history']}"
-                    )
-                elif debate.get("bear_history", "").strip():
-                    adapter.on_report_update(
-                        "investment_plan", f"### Bear\n{debate['bear_history']}"
-                    )
-
-            if chunk.get("trader_investment_plan"):
-                report_sections["trader_investment_plan"] = chunk["trader_investment_plan"]
-                adapter.on_report_update("trader_investment_plan", chunk["trader_investment_plan"])
-                if agent_status.get("Trader") != "completed":
-                    agent_status["Trader"] = "completed"
-                    adapter.on_agent_finish("Trader")
-                    for name in ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"]:
-                        adapter.on_agent_start(name)
-                        agent_status[name] = "in_progress"
-
-            if chunk.get("risk_debate_state"):
-                risk = chunk["risk_debate_state"]
-                if risk.get("aggressive_history", "").strip():
-                    adapter.on_report_update(
-                        "final_trade_decision", f"### Aggressive\n{risk['aggressive_history']}"
-                    )
-                if risk.get("conservative_history", "").strip():
-                    adapter.on_report_update(
-                        "final_trade_decision", f"### Conservative\n{risk['conservative_history']}"
-                    )
-                if risk.get("neutral_history", "").strip():
-                    adapter.on_report_update(
-                        "final_trade_decision", f"### Neutral\n{risk['neutral_history']}"
-                    )
-                judge = risk.get("judge_decision", "").strip()
-                if judge and agent_status.get("Portfolio Manager") != "completed":
-                    adapter.on_agent_start("Portfolio Manager")
-                    agent_status["Portfolio Manager"] = "in_progress"
-                    adapter.on_report_update("final_trade_decision", f"### PM Decision\n{judge}")
-                    for name in [
-                        "Aggressive Analyst",
-                        "Neutral Analyst",
-                        "Conservative Analyst",
-                        "Portfolio Manager",
-                    ]:
-                        agent_status[name] = "completed"
-                        adapter.on_agent_finish(name)
-
-            elapsed = time.time() - start_time
-            adapter.on_stats_update(
-                {
-                    "elapsed_seconds": int(elapsed),
-                    "reports_done": len([v for v in report_sections.values() if v]),
-                    "reports_total": 7,
-                }
-            )
-
-            trace.append(chunk)
-
-        final_state = {}
-        for c in trace:
-            final_state.update(c)
-
-        signal = ""
-        rating = ""
-        try:
-            signal_result = graph.process_signal(final_state.get("final_trade_decision", ""))
-            signal = signal_result if isinstance(signal_result, str) else str(signal_result)
-            rating = signal
-        except Exception:
-            signal = "N/A"
-            rating = "N/A"
-
-        final_report = final_state.get("final_trade_decision", "")
-        agent_reports = {k: v for k, v in report_sections.items() if v}
-
-        task.status = "completed"
-        task.signal = signal
-        task.rating = rating
-        task.final_report = final_report
-        task.agent_reports = agent_reports
-        task.token_usage = {
-            "elapsed_seconds": int(time.time() - start_time),
-        }
-        task.completed_at = datetime.now(timezone.utc)
-        db.commit()
-
-        adapter.on_complete(signal, rating, final_report, agent_reports, task.token_usage)
+        _execute_analysis(task, config, adapter, db)
 
     except Exception as e:
         logger.exception("Analysis task %s failed", task_id)
@@ -441,6 +255,211 @@ def run_analysis_task(
             logger.error("Task %s failed before adapter was initialized: %s", task_id, e)
     finally:
         db.close()
+
+
+def _execute_analysis(task: AnalysisTask, config: dict, adapter, db: Session):
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+    from tradingagents.default_config import DEFAULT_CONFIG
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
+
+    run_config = DEFAULT_CONFIG.copy()
+    run_config["max_debate_rounds"] = config.get("research_depth", 2)
+    run_config["max_risk_discuss_rounds"] = config.get("research_depth", 2)
+
+    _PROVIDER_DEFAULTS = {
+        "deepseek": {
+            "deep_think_llm": "deepseek-v4-pro",
+            "quick_think_llm": "deepseek-v4-flash",
+        },
+        "openai": {"deep_think_llm": "gpt-4.1", "quick_think_llm": "gpt-4.1-mini"},
+    }
+    provider = config.get("llm_provider", "openai").lower()
+    run_config["llm_provider"] = provider
+    _pd = _PROVIDER_DEFAULTS.get(provider, {})
+    run_config["deep_think_llm"] = config.get("deep_think_llm") or _pd.get(
+        "deep_think_llm", DEFAULT_CONFIG.get("deep_think_llm")
+    )
+    run_config["quick_think_llm"] = config.get("quick_think_llm") or _pd.get(
+        "quick_think_llm", DEFAULT_CONFIG.get("quick_think_llm")
+    )
+    run_config["output_language"] = config.get("output_language", "English")
+    if config.get("backend_url"):
+        run_config["backend_url"] = config["backend_url"]
+    if config.get("google_thinking_level"):
+        run_config["google_thinking_level"] = config["google_thinking_level"]
+    if config.get("openai_reasoning_effort"):
+        run_config["openai_reasoning_effort"] = config["openai_reasoning_effort"]
+    if config.get("anthropic_effort"):
+        run_config["anthropic_effort"] = config["anthropic_effort"]
+
+    selected_analysts = [a for a in ANALYST_ORDER if a in config.get("analysts", ANALYST_ORDER)]
+
+    graph = TradingAgentsGraph(
+        selected_analysts,
+        config=run_config,
+        debug=True,
+        callbacks=[],
+    )
+
+    instrument_context = graph.resolve_instrument_context(
+        config["ticker"], config.get("asset_type", "stock")
+    )
+    init_agent_state = graph.propagator.create_initial_state(
+        config["ticker"],
+        config["trade_date"],
+        asset_type=config.get("asset_type", "stock"),
+        instrument_context=instrument_context,
+    )
+    args = graph.propagator.get_graph_args()
+
+    all_agent_names = []
+    for a in selected_analysts:
+        all_agent_names.append(ANALYST_AGENT_NAMES[a])
+    for team_agents in FIXED_AGENTS.values():
+        all_agent_names.extend(team_agents)
+    adapter.on_agents_init(all_agent_names)
+
+    first_analyst = ANALYST_AGENT_NAMES.get(selected_analysts[0], "Market Analyst")
+    adapter.on_agent_start(first_analyst)
+
+    report_sections = {}
+    agent_status = dict.fromkeys(all_agent_names, "pending")
+    agent_status[first_analyst] = "in_progress"
+
+    trace = []
+    start_time = time.time()
+
+    for chunk in graph.graph.stream(init_agent_state, **args):
+        for message in chunk.get("messages", []):
+            content = _extract_content(getattr(message, "content", None))
+            if content and content.strip():
+                if isinstance(message, HumanMessage):
+                    if content.strip() != "Continue":
+                        adapter.on_message("User", content)
+                elif isinstance(message, AIMessage):
+                    adapter.on_message("Agent", content[:500])
+                elif isinstance(message, ToolMessage):
+                    adapter.on_message("Data", content[:300])
+
+            if hasattr(message, "tool_calls") and message.tool_calls:
+                for tc in message.tool_calls:
+                    tool_name = tc["name"] if isinstance(tc, dict) else tc.name
+                    tool_args = tc["args"] if isinstance(tc, dict) else tc.args
+                    adapter.on_tool_call("Agent", tool_name, tool_args)
+
+        found_active = False
+        for analyst_key in selected_analysts:
+            agent_name = ANALYST_AGENT_NAMES[analyst_key]
+            report_key = ANALYST_REPORT_MAP[analyst_key]
+            if chunk.get(report_key):
+                report_sections[report_key] = chunk[report_key]
+                adapter.on_report_update(report_key, chunk[report_key])
+                agent_status[agent_name] = "completed"
+                adapter.on_agent_finish(agent_name)
+            elif not found_active and agent_status.get(agent_name) != "completed":
+                if agent_status.get(agent_name) != "in_progress":
+                    adapter.on_agent_start(agent_name)
+                agent_status[agent_name] = "in_progress"
+                found_active = True
+
+        if chunk.get("investment_debate_state"):
+            debate = chunk["investment_debate_state"]
+            for name in ["Bull Researcher", "Bear Researcher", "Research Manager"]:
+                if agent_status.get(name) == "pending":
+                    adapter.on_agent_start(name)
+                    agent_status[name] = "in_progress"
+            if debate.get("judge_decision", "").strip():
+                for name in ["Bull Researcher", "Bear Researcher", "Research Manager"]:
+                    agent_status[name] = "completed"
+                    adapter.on_agent_finish(name)
+                report_sections["investment_plan"] = debate["judge_decision"]
+                adapter.on_report_update("investment_plan", debate["judge_decision"])
+                adapter.on_agent_start("Trader")
+                agent_status["Trader"] = "in_progress"
+            elif debate.get("bull_history", "").strip():
+                adapter.on_report_update("investment_plan", f"### Bull\n{debate['bull_history']}")
+            elif debate.get("bear_history", "").strip():
+                adapter.on_report_update("investment_plan", f"### Bear\n{debate['bear_history']}")
+
+        if chunk.get("trader_investment_plan"):
+            report_sections["trader_investment_plan"] = chunk["trader_investment_plan"]
+            adapter.on_report_update("trader_investment_plan", chunk["trader_investment_plan"])
+            if agent_status.get("Trader") != "completed":
+                agent_status["Trader"] = "completed"
+                adapter.on_agent_finish("Trader")
+                for name in ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"]:
+                    adapter.on_agent_start(name)
+                    agent_status[name] = "in_progress"
+
+        if chunk.get("risk_debate_state"):
+            risk = chunk["risk_debate_state"]
+            if risk.get("aggressive_history", "").strip():
+                adapter.on_report_update(
+                    "final_trade_decision", f"### Aggressive\n{risk['aggressive_history']}"
+                )
+            if risk.get("conservative_history", "").strip():
+                adapter.on_report_update(
+                    "final_trade_decision", f"### Conservative\n{risk['conservative_history']}"
+                )
+            if risk.get("neutral_history", "").strip():
+                adapter.on_report_update(
+                    "final_trade_decision", f"### Neutral\n{risk['neutral_history']}"
+                )
+            judge = risk.get("judge_decision", "").strip()
+            if judge and agent_status.get("Portfolio Manager") != "completed":
+                adapter.on_agent_start("Portfolio Manager")
+                agent_status["Portfolio Manager"] = "in_progress"
+                adapter.on_report_update("final_trade_decision", f"### PM Decision\n{judge}")
+                for name in [
+                    "Aggressive Analyst",
+                    "Neutral Analyst",
+                    "Conservative Analyst",
+                    "Portfolio Manager",
+                ]:
+                    agent_status[name] = "completed"
+                    adapter.on_agent_finish(name)
+
+        elapsed = time.time() - start_time
+        adapter.on_stats_update(
+            {
+                "elapsed_seconds": int(elapsed),
+                "reports_done": len([v for v in report_sections.values() if v]),
+                "reports_total": 7,
+            }
+        )
+
+        trace.append(chunk)
+
+    final_state = {}
+    for c in trace:
+        final_state.update(c)
+
+    signal = ""
+    rating = ""
+    try:
+        signal_result = graph.process_signal(final_state.get("final_trade_decision", ""))
+        signal = signal_result if isinstance(signal_result, str) else str(signal_result)
+        rating = signal
+    except Exception:
+        signal = "N/A"
+        rating = "N/A"
+
+    final_report = final_state.get("final_trade_decision", "")
+    agent_reports = {k: v for k, v in report_sections.items() if v}
+
+    task.status = "completed"
+    task.signal = signal
+    task.rating = rating
+    task.final_report = final_report
+    task.agent_reports = agent_reports
+    task.token_usage = {
+        "elapsed_seconds": int(time.time() - start_time),
+    }
+    task.completed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    adapter.on_complete(signal, rating, final_report, agent_reports, task.token_usage)
 
 
 def _extract_content(content) -> str | None:
