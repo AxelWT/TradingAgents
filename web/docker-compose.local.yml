@@ -1,0 +1,35 @@
+# Local single-host deployment: builds image from web/Dockerfile.prod
+# and runs backend + (served) frontend in one container.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d --build
+#   # or via the helper: ./deploy.sh up
+#
+# Required env files (not bundled into image per .dockerignore):
+#   ../.env            -> root .env (LLM provider keys, TRADINGAGENTS_* overrides)
+#   backend/.env       -> web/backend/.env (DB, JWT, SMTP, admin account)
+
+services:
+  tradingagents:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile.prod
+      args:
+        # Empty -> frontend uses relative /api paths -> same-origin in single container.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    container_name: tradingagents-local
+    env_file:
+      - ../.env
+      - backend/.env
+    environment:
+      # Absolute sqlite path inside the mounted volume so the DB survives restarts.
+      - DATABASE_URL=sqlite:////home/appuser/.tradingagents/web.db
+      - FRONTEND_DIST=/app/web/frontend/dist
+    volumes:
+      - tradingagents_data:/home/appuser/.tradingagents
+    ports:
+      - "${WEB_PORT:-8004}:8000"
+    restart: unless-stopped
+
+volumes:
+  tradingagents_data:
