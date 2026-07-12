@@ -3,11 +3,16 @@
 #
 # Usage:
 #   docker compose -f docker-compose.local.yml up -d --build
-#   # or via the helper: ./deploy.sh up
+#   # or via the helper: ./deploy-local.sh up
 #
 # Required env files (not bundled into image per .dockerignore):
 #   ../.env            -> root .env (LLM provider keys, TRADINGAGENTS_* overrides)
 #   backend/.env       -> web/backend/.env (DB, JWT, SMTP, admin account)
+#
+# Project name is pinned via the top-level `name:` field below, so the
+# data volume will be `tradingagents_tradingagents_data`.
+
+name: tradingagents
 
 services:
   tradingagents:

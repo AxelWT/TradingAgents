@@ -13,7 +13,7 @@ CLEANING_UP=""
 
 TARGET="${1:-all}"
 
-log() { echo "[start.sh] $*"; }
+log() { echo "[start-local.sh] $*"; }
 
 # Start a service so that $! is the PID of the actual service process
 # (we `exec` inside the subshell, replacing it with the service binary),
