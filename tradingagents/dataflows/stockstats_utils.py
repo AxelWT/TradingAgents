@@ -9,7 +9,6 @@ from stockstats import wrap
 from yfinance.exceptions import YFRateLimitError
 
 from .config import get_config
-from .errors import VendorRateLimitError
 from .symbol_utils import NoMarketDataError, normalize_symbol
 from .utils import safe_ticker_component
 
@@ -26,26 +25,18 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
 
     yfinance raises YFRateLimitError on HTTP 429 responses but does not
     retry them internally. This wrapper adds retry logic specifically
-    for rate limits. When retries are exhausted, the YFRateLimitError is
-    translated to a VendorRateLimitError so the routing layer
-    (interface.route_to_vendor) recognizes it as a transient throttle and
-    falls through to the next configured vendor instead of aborting the
-    call. Other exceptions propagate immediately.
+    for rate limits. Other exceptions propagate immediately.
     """
     for attempt in range(max_retries + 1):
         try:
             return func()
-        except YFRateLimitError as e:
+        except YFRateLimitError:
             if attempt < max_retries:
-                delay = base_delay * (2**attempt)
-                logger.warning(
-                    f"Yahoo Finance rate limited, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})"
-                )
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"Yahoo Finance rate limited, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
-                raise VendorRateLimitError(
-                    f"Yahoo Finance rate limit exceeded after {max_retries} retries"
-                ) from e
+                raise
 
 
 def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
@@ -172,20 +163,20 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
             data = cached
 
     if data is None:
-        downloaded = yf_retry(
-            lambda: yf.download(
-                canonical,
-                start=start_str,
-                end=end_str,
-                multi_level_index=False,
-                progress=False,
-                auto_adjust=True,
-            )
-        )
+        downloaded = yf_retry(lambda: yf.download(
+            canonical,
+            start=start_str,
+            end=end_str,
+            multi_level_index=False,
+            progress=False,
+            auto_adjust=True,
+        ))
         downloaded = _ensure_date_column(downloaded.reset_index())
         # Only cache real data — never persist an empty frame.
         if downloaded.empty or "Close" not in downloaded.columns:
-            raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
+            raise NoMarketDataError(
+                symbol, canonical, "Yahoo Finance returned no rows"
+            )
         downloaded.to_csv(data_file, index=False, encoding="utf-8")
         data = downloaded
 
@@ -199,103 +190,6 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     _assert_ohlcv_not_stale(data, curr_date, symbol, canonical)
 
     return data
-
-
-def load_ohlcv_routed(symbol: str, curr_date: str) -> pd.DataFrame:
-    """Vendor-aware OHLCV loader returning a DataFrame.
-
-    Mirrors the fallback chain in ``interface.route_to_vendor`` but for the
-    DataFrame contract that ``load_ohlcv`` exposes (5y window, curr_date
-    cutoff, stale rejection). Callers that need a DataFrame — not a CSV
-    string — go through here so they get the same multi-vendor resilience
-    as the string-returning tools.
-
-    Order: yfinance (``load_ohlcv``) first; on NoMarketDataError / a yfinance
-    rate limit / any vendor failure, fall back to akshare
-    (``load_ohlcv_akshare``) then tushare (``load_ohlcv_tushare``, A-shares
-    only). If all fail, raise ``NoMarketDataError`` so the caller surfaces
-    "no data" rather than fabricating a frame or crashing with an opaque
-    transport error.
-
-    Like ``route_to_vendor``, each vendor's failure is logged but never
-    swallowed silently: a broken primary must be visible in logs (#989) so
-    a fallback's success (or the no-data verdict) can't hide it. Transient
-    transport errors (``ConnectionError`` / ``Timeout``) are absorbed here
-    rather than propagated — the vendor's own retry wrapper already had its
-    chance, and the next vendor may succeed.
-
-    This exists because ``market_data_validator`` and other DataFrame
-    consumers previously called ``load_ohlcv`` directly, bypassing the vendor
-    router and crashing whenever yfinance was rate-limited even when an
-    alternative vendor could have served the symbol.
-    """
-    last_error: Exception | None = None
-
-    # yfinance (cached, fastest, widest coverage).
-    try:
-        return load_ohlcv(symbol, curr_date)
-    except NoMarketDataError as e:
-        last_error = e
-        logger.info("yfinance load_ohlcv reported no data for %s; trying akshare", symbol)
-    except VendorRateLimitError as e:
-        last_error = e
-        logger.info("yfinance load_ohlcv rate-limited for %s; trying akshare", symbol)
-    except Exception as e:
-        # A genuine transport/parse failure (not a clean "no data"). Log it
-        # so a broken yfinance primary can't hide behind a fallback, then try
-        # the next vendor — the router's generic except does the same (#989).
-        last_error = e
-        logger.warning("yfinance load_ohlcv failed for %s: %s", symbol, e)
-
-    # akshare (keyless, A-share + HK + US).
-    # Lazy import to avoid a circular dependency: akshare_impl imports
-    # _clean_dataframe / _assert_ohlcv_not_stale from this module.
-    from .akshare_impl import load_ohlcv_akshare
-
-    try:
-        return load_ohlcv_akshare(symbol, curr_date)
-    except NoMarketDataError as e:
-        last_error = e
-        logger.info("akshare load_ohlcv reported no data for %s; trying tushare", symbol)
-    except VendorRateLimitError as e:
-        last_error = e
-        logger.info("akshare load_ohlcv rate-limited for %s; trying tushare", symbol)
-    except Exception as e:
-        # akshare's Eastmoney/Sina backend occasionally drops connections
-        # after exhausting its own retries; fall through to tushare rather
-        # than propagating a ConnectionError that crashes the caller.
-        last_error = e
-        logger.warning("akshare load_ohlcv failed for %s: %s", symbol, e)
-
-    # tushare (token-gated, A-share only). Non-A-share symbols raise
-    # NoMarketDataError here, which is caught above and surfaces as the final
-    # no-data verdict.
-    from .tushare_impl import load_ohlcv_tushare
-
-    try:
-        return load_ohlcv_tushare(symbol, curr_date)
-    except NoMarketDataError:
-        # All three vendors exhausted — surface the no-data verdict so the
-        # caller can emit its sentinel rather than crashing with an opaque
-        # error. Prefer a prior NoMarketDataError (clean "no rows" signal)
-        # over a transport/limit failure so the message reflects "genuinely
-        # unavailable" rather than "we hit a transient blip".
-        if isinstance(last_error, NoMarketDataError):
-            raise
-        raise NoMarketDataError(
-            symbol, symbol, f"no vendor returned OHLCV data: {last_error}"
-        ) from last_error
-    except VendorRateLimitError as e:
-        # tushare rate-limited and there's no further fallback. Surface a
-        # clean NoMarketDataError so DataFrame callers (which don't have
-        # route_to_vendor's sentinel logic) degrade gracefully.
-        raise NoMarketDataError(
-            symbol, symbol, f"all vendors exhausted (tushare rate-limited): {e}"
-        ) from e
-    except Exception as e:
-        # tushare transport/parse failure with no further fallback.
-        logger.warning("tushare load_ohlcv failed for %s: %s", symbol, e)
-        raise NoMarketDataError(symbol, symbol, f"no vendor returned OHLCV data: {e}") from e
 
 
 def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFrame:
@@ -319,7 +213,9 @@ class StockstatsUtils:
         indicator: Annotated[
             str, "quantitative indicators based off of the stock data for the company"
         ],
-        curr_date: Annotated[str, "curr date for retrieving stock price data, YYYY-mm-dd"],
+        curr_date: Annotated[
+            str, "curr date for retrieving stock price data, YYYY-mm-dd"
+        ],
     ):
         data = load_ohlcv(symbol, curr_date)
         df = wrap(data)

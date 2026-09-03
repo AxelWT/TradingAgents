@@ -8,7 +8,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /build
 COPY . .
-RUN pip install --no-cache-dir ".[akshare,tushare]"
+RUN pip install --no-cache-dir .
 
 FROM python:3.12-slim
 

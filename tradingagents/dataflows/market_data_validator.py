@@ -15,36 +15,24 @@ from collections.abc import Iterable
 import pandas as pd
 from stockstats import wrap
 
-from tradingagents.dataflows.errors import NoMarketDataError
-from tradingagents.dataflows.stockstats_utils import load_ohlcv_routed
+from tradingagents.dataflows.stockstats_utils import load_ohlcv
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
 DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
-    "close_10_ema",
-    "close_50_sma",
-    "close_200_sma",
-    "rsi",
-    "boll",
-    "boll_ub",
-    "boll_lb",
-    "macd",
-    "macds",
-    "macdh",
-    "atr",
+    "close_10_ema", "close_50_sma", "close_200_sma",
+    "rsi", "boll", "boll_ub", "boll_lb",
+    "macd", "macds", "macdh", "atr",
 )
 
 
 def _verified_rows(symbol: str, curr_date: str) -> pd.DataFrame:
     """OHLCV on or before curr_date, date-sorted. Raises if nothing usable.
 
-    Uses ``load_ohlcv_routed`` (vendor-aware) so a yfinance rate limit no
-    longer crashes this verification path when an alternative vendor can
-    serve the symbol. The routed loader already normalizes the Date column
-    and filters out look-ahead rows, but we re-apply the cutoff defensively
-    — this is a verification path, so it must not trust its input to be
-    pre-filtered.
+    ``load_ohlcv`` already normalizes the Date column and filters out
+    look-ahead rows, but we re-apply the cutoff defensively — this is a
+    verification path, so it must not trust its input to be pre-filtered.
     """
-    data = load_ohlcv_routed(symbol, curr_date)
+    data = load_ohlcv(symbol, curr_date)
     if data is None or data.empty:
         raise ValueError(f"No OHLCV data available for {symbol}.")
 
@@ -77,38 +65,7 @@ def build_verified_market_snapshot(
     look_back_days: int = 30,
     indicators: Iterable[str] | None = None,
 ) -> str:
-    """Render a ground-truth snapshot: latest OHLCV row, indicators, recent closes.
-
-    Degrades to a ``NO_DATA_AVAILABLE:`` sentinel string (matching
-    ``interface.route_to_vendor``'s convention) when every vendor reports no
-    data, so the tool caller gets one clear "unavailable" signal instead of a
-    crash that aborts the whole analysis task. A prior fix routed this path
-    through ``load_ohlcv_routed`` for multi-vendor resilience; this catches
-    the case where all vendors are exhausted so the tool still returns a
-    usable string rather than raising.
-    """
-    try:
-        df = _verified_rows(symbol, curr_date)
-    except NoMarketDataError as e:
-        # All vendors exhausted — return the same sentinel convention
-        # `route_to_vendor` uses so the agent treats it as "unavailable"
-        # instead of the LangChain ToolNode crashing the task.
-        reason = f" ({e.detail})" if e.detail else ""
-        return (
-            f"NO_DATA_AVAILABLE: No usable market data for '{symbol}' from any "
-            f"configured vendor{reason}. The symbol may be invalid, delisted, "
-            f"not covered, or all vendors returned stale data. Do not estimate "
-            f"or fabricate values — report that data is unavailable for this symbol."
-        )
-    except ValueError as e:
-        # _verified_rows raises ValueError when the frame is non-empty but
-        # has no rows on/before curr_date (e.g. a brand-new listing). Degrade
-        # to the same sentinel so the tool never crashes the task.
-        return (
-            f"NO_DATA_AVAILABLE: No usable market data for '{symbol}' on or before "
-            f"{curr_date} ({e}). Do not estimate or fabricate values — report "
-            f"that data is unavailable for this symbol and date."
-        )
+    """Render a ground-truth snapshot: latest OHLCV row, indicators, recent closes."""
     # `df` keeps the original capitalized OHLCV columns (Open/High/Low/Close/
     # Volume); stockstats `wrap()` lowercases columns and adds indicator
     # columns, so read raw prices from `df` and indicators from `stock_df`.
@@ -144,23 +101,13 @@ def build_verified_market_snapshot(
     for field in ("Open", "High", "Low", "Close", "Volume"):
         lines.append(f"| {field} | {_fmt(latest.get(field))} |")
 
-    lines += [
-        "",
-        "### Verified technical indicators (latest row)",
-        "",
-        "| Indicator | Value |",
-        "|---|---:|",
-    ]
+    lines += ["", "### Verified technical indicators (latest row)", "",
+              "| Indicator | Value |", "|---|---:|"]
     for name, value in indicator_values.items():
         lines.append(f"| {name} | {value} |")
 
-    lines += [
-        "",
-        f"### Recent verified closes (last {len(recent)} rows)",
-        "",
-        "| Date | Close |",
-        "|---|---:|",
-    ]
+    lines += ["", f"### Recent verified closes (last {len(recent)} rows)", "",
+              "| Date | Close |", "|---|---:|"]
     for _, row in recent.iterrows():
         lines.append(f"| {_fmt(row['Date'])} | {_fmt(row.get('Close'))} |")
 
