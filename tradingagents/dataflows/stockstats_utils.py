@@ -9,6 +9,7 @@ from stockstats import wrap
 from yfinance.exceptions import YFRateLimitError
 
 from .config import get_config
+from .errors import VendorNotConfiguredError, VendorRateLimitError
 from .symbol_utils import NoMarketDataError, normalize_symbol
 from .utils import safe_ticker_component
 
@@ -31,18 +32,26 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
 
     yfinance raises YFRateLimitError on HTTP 429 responses but does not
     retry them internally. This wrapper adds retry logic specifically
-    for rate limits. Other exceptions propagate immediately.
+    for rate limits. When retries are exhausted the YFRateLimitError is
+    converted to VendorRateLimitError so route_to_vendor falls back to
+    the next vendor — yfinance's own exception type is not a VendorError
+    and would otherwise bypass the rate-limit fallback path. Other
+    exceptions propagate immediately.
     """
     for attempt in range(max_retries + 1):
         try:
             return func()
-        except YFRateLimitError:
+        except YFRateLimitError as e:
             if attempt < max_retries:
-                delay = base_delay * (2 ** attempt)
-                logger.warning(f"Yahoo Finance rate limited, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
+                delay = base_delay * (2**attempt)
+                logger.warning(
+                    f"Yahoo Finance rate limited, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})"
+                )
                 time.sleep(delay)
             else:
-                raise
+                raise VendorRateLimitError(
+                    f"yfinance rate limited after {max_retries} retries"
+                ) from e
 
 
 def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
@@ -228,20 +237,20 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
             data = cached
 
     if data is None:
-        downloaded = yf_retry(lambda: yf.download(
-            canonical,
-            start=start_str,
-            end=end_str,
-            multi_level_index=False,
-            progress=False,
-            auto_adjust=True,
-        ))
+        downloaded = yf_retry(
+            lambda: yf.download(
+                canonical,
+                start=start_str,
+                end=end_str,
+                multi_level_index=False,
+                progress=False,
+                auto_adjust=True,
+            )
+        )
         downloaded = _ensure_date_column(downloaded.reset_index())
         # Only cache real data — never persist an empty frame.
         if downloaded.empty or "Close" not in downloaded.columns:
-            raise NoMarketDataError(
-                symbol, canonical, "Yahoo Finance returned no rows"
-            )
+            raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
         downloaded.to_csv(data_file, index=False, encoding="utf-8")
         data = downloaded
 
@@ -255,9 +264,7 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     # it would make the previous trading day look like the latest (#1201); raise
     # instead so the router surfaces it rather than fabricating a fallback.
     if not data.empty and pd.isna(data["Close"].iloc[-1]):
-        raise NoMarketDataError(
-            symbol, canonical, "latest in-range OHLCV bar has no closing price"
-        )
+        raise NoMarketDataError(symbol, canonical, "latest in-range OHLCV bar has no closing price")
 
     data = _fill_price_gaps(data)
 
@@ -282,6 +289,103 @@ def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFram
     return data.loc[:, mask]
 
 
+def _load_ohlcv_for_vendor(vendor: str, symbol: str, curr_date: str) -> pd.DataFrame:
+    """Dispatch to a vendor's raw OHLCV DataFrame loader.
+
+    Lazy-imports non-yfinance vendors to avoid circular imports
+    (``stockstats_utils`` -> ``interface`` -> ``y_finance`` ->
+    ``stockstats_utils``). Each loader returns a DataFrame with columns
+    ``Date, Open, High, Low, Close, Volume`` filtered to ``<= curr_date``.
+    """
+    if vendor == "yfinance":
+        return load_ohlcv(symbol, curr_date)
+    if vendor == "a_stock":
+        from .a_stock import _load_ohlcv_astock
+
+        return _load_ohlcv_astock(symbol, curr_date)
+    if vendor == "alpha_vantage":
+        from .alpha_vantage_stock import _load_ohlcv_alpha_vantage
+
+        return _load_ohlcv_alpha_vantage(symbol, curr_date)
+    raise ValueError(f"No raw OHLCV loader for vendor {vendor!r}")
+
+
+# Vendors with raw DataFrame OHLCV loaders. Order mirrors VENDOR_METHODS so
+# the "default" sentinel expansion matches route_to_vendor's behavior. Must
+# stay in sync with ``_load_ohlcv_for_vendor``.
+_RAW_OHLCV_VENDORS: tuple[str, ...] = ("alpha_vantage", "yfinance", "a_stock")
+
+
+def load_ohlcv_routed(symbol: str, curr_date: str) -> pd.DataFrame:
+    """Config-driven, market-aware OHLCV loader with vendor fallback.
+
+    Selects the vendor chain the same way ``route_to_vendor`` does for
+    ``get_stock_data`` — reading ``analysis_market_var`` (set by the graph from
+    the analyzed ticker) and then ``market_vendors[market][core_stock_apis]``
+    (or a ``tool_vendors`` override) — so the verified-market-snapshot path and
+    the market analyst's ``get_stock_data`` use the same vendors, including
+    fallback. Outside a graph run (no ContextVar set), the market is inferred
+    from the symbol so a standalone CN-symbol snapshot still routes to a_stock.
+    Vendors are tried in configured order; on ``NoMarketDataError``,
+    ``VendorRateLimitError``, ``VendorNotConfiguredError``, or any other
+    ``Exception`` the next vendor is tried, mirroring ``route_to_vendor``'s
+    error handling.
+    """
+    # Lazy import: interface -> y_finance -> stockstats_utils would cycle.
+    from .config import analysis_market_var
+    from .interface import get_vendor
+    from .symbol_utils import classify_market
+
+    # Within a graph run, use the run's market (set from the analyzed ticker
+    # via analysis_market_var) so this path matches route_to_vendor's market
+    # selection exactly. Outside a run (standalone snapshot), fall back to
+    # inferring from the symbol so a CN symbol still routes to a_stock.
+    market = analysis_market_var.get() or classify_market(symbol)
+    vendor_config = get_vendor("core_stock_apis", method="get_stock_data", market=market)
+    configured = [v.strip() for v in vendor_config.split(",") if v.strip()]
+
+    # Resolve the chain: explicit vendors are used as-is (skipping any that
+    # lack a raw loader); the "default" sentinel expands to all raw loaders.
+    if configured and "default" not in [v.lower() for v in configured]:
+        vendor_chain = configured
+    else:
+        vendor_chain = list(_RAW_OHLCV_VENDORS)
+
+    last_no_data: NoMarketDataError | None = None
+    first_error: Exception | None = None
+    for vendor in vendor_chain:
+        if vendor not in _RAW_OHLCV_VENDORS:
+            logger.warning("No raw OHLCV loader for vendor %r; skipping.", vendor)
+            continue
+        try:
+            return _load_ohlcv_for_vendor(vendor, symbol, curr_date)
+        except NoMarketDataError as e:
+            last_no_data = e
+            continue
+        except (VendorRateLimitError, VendorNotConfiguredError) as e:
+            logger.warning(
+                "Vendor %r unavailable for OHLCV %s; trying next vendor.",
+                vendor,
+                symbol,
+            )
+            if first_error is None:
+                first_error = e
+            continue
+        except Exception as e:
+            # Mirror route_to_vendor: don't let one vendor's failure crash the
+            # call when another can serve it, but never swallow silently.
+            logger.warning("Vendor %r failed for OHLCV %s: %s", vendor, symbol, e)
+            if first_error is None:
+                first_error = e
+            continue
+
+    if last_no_data is not None:
+        raise last_no_data
+    if first_error is not None:
+        raise first_error
+    raise NoMarketDataError(symbol, symbol, "no OHLCV vendor available")
+
+
 class StockstatsUtils:
     @staticmethod
     def get_stock_stats(
@@ -289,11 +393,9 @@ class StockstatsUtils:
         indicator: Annotated[
             str, "quantitative indicators based off of the stock data for the company"
         ],
-        curr_date: Annotated[
-            str, "curr date for retrieving stock price data, YYYY-mm-dd"
-        ],
+        curr_date: Annotated[str, "curr date for retrieving stock price data, YYYY-mm-dd"],
     ):
-        data = load_ohlcv(symbol, curr_date)
+        data = load_ohlcv_routed(symbol, curr_date)
         df = wrap(data)
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
         curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")

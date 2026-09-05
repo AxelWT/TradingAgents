@@ -8,6 +8,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_news,
     get_prediction_markets,
 )
+from tradingagents.dataflows.symbol_utils import classify_market
 
 
 def create_news_analyst(llm):
@@ -17,6 +18,13 @@ def create_news_analyst(llm):
         asset_label = "company" if asset_type == "stock" else "asset"
         instrument_context = get_instrument_context_from_state(state)
 
+        # Market-aware macro prompt: a CN analysis routes get_macro_indicators
+        # to china_macro (LPR/SHIBOR/CPI/PMI/M2/…) and get_global_news to
+        # a_stock (财联社/东财 Chinese macro wire); a US analysis keeps FRED
+        # aliases and yfinance global news. classify_market is purely syntactic.
+        ticker = str(state.get("company_of_interest", ""))
+        is_cn = classify_market(ticker) == "cn"
+
         tools = [
             get_news,
             get_global_news,
@@ -24,8 +32,30 @@ def create_news_analyst(llm):
             get_prediction_markets,
         ]
 
+        if is_cn:
+            macro_hint = (
+                "get_macro_indicators(indicator, curr_date, look_back_days) to "
+                "ground macro commentary in China-specific data from china_macro "
+                "(aliases: 'lpr', 'shibor_overnight', 'cn_cpi', 'cn_ppi', "
+                "'cn_pmi', 'm2', 'social_financing', 'rmb_usd'), "
+                "get_global_news(curr_date, look_back_days, limit) for broader "
+                "Chinese macro/market news (财联社/东财), and "
+                "get_prediction_markets(topic, limit) for live market-implied "
+                "probabilities"
+            )
+        else:
+            macro_hint = (
+                "get_macro_indicators(indicator, curr_date, look_back_days) to "
+                "ground macro commentary in actual data from FRED (e.g. 'cpi', "
+                "'core_pce', 'unemployment', 'fed_funds_rate', '10y_treasury', "
+                "'yield_curve'), and get_prediction_markets(topic, limit) for "
+                "live market-implied probabilities of forward-looking events "
+                "(e.g. 'Fed rate cut', 'recession 2026', geopolitical or sector "
+                "events)"
+            )
+
         system_message = (
-            f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(ticker, start_date, end_date) for {asset_label}-specific news by ticker symbol, get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news, get_macro_indicators(indicator, curr_date, look_back_days) to ground macro commentary in actual data from FRED (e.g. 'cpi', 'core_pce', 'unemployment', 'fed_funds_rate', '10y_treasury', 'yield_curve'), and get_prediction_markets(topic, limit) for live market-implied probabilities of forward-looking events (e.g. 'Fed rate cut', 'recession 2026', geopolitical or sector events). Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
+            f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(ticker, start_date, end_date) for {asset_label}-specific news by ticker symbol, get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news, {macro_hint}. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
             + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
             + get_language_instruction()
         )

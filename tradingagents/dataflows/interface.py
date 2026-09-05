@@ -1,5 +1,16 @@
 import logging
 
+from .a_stock import (
+    get_balance_sheet as get_astock_balance_sheet,
+    get_cashflow as get_astock_cashflow,
+    get_fundamentals as get_astock_fundamentals,
+    get_global_news as get_astock_global_news,
+    get_income_statement as get_astock_income_statement,
+    get_indicators as get_astock_indicators,
+    get_insider_transactions as get_astock_insider_transactions,
+    get_news as get_astock_news,
+    get_stock_data as get_astock_stock_data,
+)
 from .alpha_vantage import (
     get_balance_sheet as get_alpha_vantage_balance_sheet,
     get_cashflow as get_alpha_vantage_cashflow,
@@ -11,6 +22,7 @@ from .alpha_vantage import (
     get_news as get_alpha_vantage_news,
     get_stock as get_alpha_vantage_stock,
 )
+from .china_macro import get_macro_data as get_china_macro_data
 from .config import get_config
 from .errors import (
     NoMarketDataError,
@@ -82,6 +94,8 @@ VENDOR_LIST = [
     "fred",
     "polymarket",
     "alpha_vantage",
+    "a_stock",
+    "china_macro",
 ]
 
 # Optional enrichment categories. These add macro/event context to the news
@@ -97,51 +111,62 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        "a_stock": get_astock_stock_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
+        "a_stock": get_astock_indicators,
     },
     # fundamental_data
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
+        "a_stock": get_astock_fundamentals,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
+        "a_stock": get_astock_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
+        "a_stock": get_astock_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
+        "a_stock": get_astock_income_statement,
     },
     # news_data
     "get_news": {
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
+        "a_stock": get_astock_news,
     },
     "get_global_news": {
         "yfinance": get_global_news_yfinance,
         "alpha_vantage": get_alpha_vantage_global_news,
+        "a_stock": get_astock_global_news,
     },
     "get_insider_transactions": {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
+        "a_stock": get_astock_insider_transactions,
     },
     # macro_data
     "get_macro_indicators": {
         "fred": get_fred_macro_data,
+        "china_macro": get_china_macro_data,
     },
     # prediction_markets
     "get_prediction_markets": {
         "polymarket": get_polymarket_prediction_markets,
     },
 }
+
 
 def get_category_for_method(method: str) -> str:
     """Get the category that contains the specified method."""
@@ -150,26 +175,46 @@ def get_category_for_method(method: str) -> str:
             return category
     raise ValueError(f"Method '{method}' not found in any category")
 
-def get_vendor(category: str, method: str = None) -> str:
-    """Get the configured vendor for a data category or specific tool method.
-    Tool-level configuration takes precedence over category-level.
+
+def get_vendor(category: str, method: str = None, market: str = "us") -> str:
+    """Get the configured vendor chain for a data category, tool method, and market.
+
+    Precedence (first match wins):
+      1. ``tool_vendors[method]`` — market-agnostic per-method override (escape hatch).
+      2. ``market_vendors[market][category]`` — market-specific vendor chain.
+      3. ``"default"`` sentinel — expands to all available vendors in VENDOR_METHODS.
     """
     config = get_config()
 
-    # Check tool-level configuration first (if method provided)
+    # 1. tool_vendors (market-agnostic escape hatch, highest priority)
     if method:
         tool_vendors = config.get("tool_vendors", {})
         if method in tool_vendors:
             return tool_vendors[method]
 
-    # Fall back to category-level configuration
-    return config.get("data_vendors", {}).get(category, "default")
+    # 2. market_vendors[market][category]
+    market_vendors = config.get("market_vendors", {})
+    market_config = market_vendors.get(market, {})
+    return market_config.get(category, "default")
+
 
 def route_to_vendor(method: str, *args, **kwargs):
     """Route method calls to appropriate vendor implementation with fallback support."""
     category = get_category_for_method(method)
-    vendor_config = get_vendor(category, method)
-    primary_vendors = [v.strip() for v in vendor_config.split(',')]
+
+    # Market-aware routing: every method reads the per-run ``analysis_market_var``
+    # (set by the graph at run start from the analyzed ticker) — a ContextVar so
+    # concurrent runs with different tickers don't clobber each other. Falls back
+    # to "us" when no run is in progress. We deliberately do NOT infer the market
+    # from a method's ticker arg: a run's market is fixed by the analyzed ticker,
+    # and an agent fetching data for a cross-market ticker (rare) will fail loud
+    # via NoMarketDataError rather than silently route to the wrong vendor.
+    from .config import analysis_market_var
+
+    market = analysis_market_var.get() or "us"
+
+    vendor_config = get_vendor(category, method, market=market)
+    primary_vendors = [v.strip() for v in vendor_config.split(",")]
 
     if method not in VENDOR_METHODS:
         raise ValueError(f"Method '{method}' not supported")
@@ -179,7 +224,7 @@ def route_to_vendor(method: str, *args, **kwargs):
     # The configured vendor list IS the chain: we do NOT silently fall back to
     # vendors the user did not choose (#988/#289) — that returned data from an
     # unexpected source and caused cross-vendor inconsistencies. For multi-vendor
-    # fallback, list them in order, e.g. data_vendors="yfinance,alpha_vantage".
+    # fallback, list them in order, e.g. market_vendors.cn.core_stock_apis="a_stock,yfinance".
     # The "default" sentinel (no explicit config) uses all available vendors.
     explicit = [v for v in primary_vendors if v and v != "default"]
     if explicit:

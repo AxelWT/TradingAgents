@@ -401,6 +401,30 @@ class TradingAgentsGraph:
             f"asset={asset_type}",
         ])
 
+    def _set_analysis_market(self, ticker: str):
+        """Bind the run's market (cn/hk/us) from the analyzed ticker.
+
+        Non-symbol data methods (get_macro_indicators, get_global_news,
+        get_prediction_markets) cannot infer a market from a ticker arg, so
+        ``route_to_vendor`` reads ``analysis_market_var`` — a ContextVar —
+        instead of a hard-coded "us". Setting it here from the analyzed ticker
+        means a CN run routes its macro/global-news calls to CN-specific vendors
+        (china_macro / a_stock) while a US run keeps fred / yfinance.
+
+        Uses a ContextVar (not a key in the global ``_config``) so concurrent
+        runs in the same process with different tickers don't clobber each
+        other (#1290). ``end_checkpoint`` clears it with ``set(None)`` —
+        sufficient because runs are not nested.
+
+        Idempotent and cheap (purely syntactic classify_market), so safe to
+        call on every entry point.
+        """
+        from tradingagents.dataflows.config import analysis_market_var
+        from tradingagents.dataflows.symbol_utils import classify_market
+
+        market = classify_market(ticker) if ticker else "us"
+        analysis_market_var.set(market)
+
     def propagate(self, company_name, trade_date, asset_type: str = "stock"):
         """Run the trading agents graph for a company on a specific date.
 
@@ -440,6 +464,10 @@ class TradingAgentsGraph:
         graph, making the flag a no-op.
         """
         self._resuming = False
+        # Tag the run's market from the ticker so non-symbol methods route to
+        # market-appropriate vendors. Uses a ContextVar (per-run, concurrent-
+        # safe) — cleared in ``end_checkpoint``.
+        self._set_analysis_market(company_name)
         if not self.config.get("checkpoint_enabled"):
             return None
         signature = self._run_signature(asset_type)
@@ -469,6 +497,11 @@ class TradingAgentsGraph:
 
     def end_checkpoint(self):
         """Restore the plain uncheckpointed graph after a checkpointed run."""
+        # Clear the per-run analysis market so this ContextVar doesn't keep
+        # pointing at the finished run's market (#1290).
+        from tradingagents.dataflows.config import analysis_market_var
+
+        analysis_market_var.set(None)
         if self._checkpointer_ctx is not None:
             self._checkpointer_ctx.__exit__(None, None, None)
             self._checkpointer_ctx = None

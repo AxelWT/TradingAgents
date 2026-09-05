@@ -13,7 +13,6 @@ dependencies = [
     "backtrader>=1.9.78.123",
     "langchain-anthropic>=0.3.15",
     "langchain-experimental>=0.3.4",
-    "langchain-google-genai>=4.0.0",
     "langchain-openai>=0.3.23",
     "langgraph>=0.4.8",
     "langgraph-checkpoint-sqlite>=2.0.0",
@@ -30,7 +29,11 @@ dependencies = [
     "stockstats>=0.6.5",
     "tqdm>=4.67.1",
     "typing-extensions>=4.14.0",
-    "yfinance>=1.4.1",
+    "yfinance>=1.7.0",
+    # A-share core data source (mootdx over TCP 7709). 0.11.7 is the first
+    # release compatible with pandas>=2.3. mootdx talks TDX over TCP and does
+    # not import httpx at runtime.
+    "mootdx>=0.11.7",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +46,19 @@ dev = [
 # stays lean: pip install "tradingagents[bedrock]".
 bedrock = [
     "langchain-aws>=1.5.0",
+]
+# Google Gemini support. Optional because langchain-google-genai>=4.0.0 requires
+# google-genai>=1.53.0 which requires httpx>=0.28.1, while mootdx (the core
+# A-share data source) pins httpx>=0.25.0,<0.26.0. No version combination
+# satisfies both, so Gemini can't be a hard dependency. Gemini users install it
+# into a separate environment or accept the httpx bump (mootdx runs fine since
+# it uses TCP, not httpx, at runtime):
+#   pip install "tradingagents[google]"
+# or, if mootdx's httpx pin conflicts in your resolver:
+#   pip install --no-deps "langchain-google-genai>=4.0.0"
+#   pip install "google-genai>=1.53.0" "httpx>=0.28.1"
+google = [
+    "langchain-google-genai>=4.0.0",
 ]
 
 [project.scripts]

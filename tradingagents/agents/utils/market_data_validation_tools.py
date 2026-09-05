@@ -2,6 +2,7 @@ from typing import Annotated
 
 from langchain_core.tools import tool
 
+from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.market_data_validator import build_verified_market_snapshot
 
 
@@ -20,4 +21,11 @@ def get_verified_market_snapshot(
     price levels, Bollinger bands, RSI, MACD, moving averages, support /
     resistance, or historical comparisons, and treat it as the source of truth.
     """
-    return build_verified_market_snapshot(symbol, curr_date, look_back_days)
+    try:
+        return build_verified_market_snapshot(symbol, curr_date, look_back_days)
+    except NoMarketDataError as e:
+        return (
+            f"VERIFIED_SNAPSHOT_UNAVAILABLE: {e}. "
+            "Proceed with analysis based on other tool outputs; do not fabricate "
+            "exact OHLCV or indicator values for this symbol."
+        )

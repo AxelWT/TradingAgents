@@ -141,3 +141,50 @@ def normalize_symbol(raw: str) -> str:
 def is_yahoo_safe(symbol: str) -> bool:
     """True when ``symbol`` only contains characters Yahoo symbols use."""
     return bool(symbol) and _YAHOO_SAFE.fullmatch(symbol) is not None
+
+
+# Market classification for market-aware vendor routing. Purely syntactic —
+# no network calls — so it is safe to apply on every request. The market code
+# returned here drives vendor selection in ``get_vendor`` / ``route_to_vendor``.
+
+# A-share codes are exactly 6 digits. Exchange suffixes seen in the wild:
+#   .SS / .SH  Shanghai Stock Exchange  (Yahoo uses .SS; .SH is the broker/MT5 form)
+#   .SZ        Shenzhen Stock Exchange
+# Prefix forms sh600519 / sz000001 are also common (MT5, eastmoney).
+_CN_PATTERNS = (
+    re.compile(r"^(sh|sz)\d{6}$", re.IGNORECASE),  # sh600519, sz000001
+    re.compile(r"^\d{6}\.(SS|SZ|SH)$", re.IGNORECASE),  # 600519.SS, 000001.SZ
+    re.compile(r"^\d{6}$"),  # 600519 (bare 6-digit)
+)
+
+# Hong Kong tickers on Yahoo carry a .HK suffix; codes are 4-5 digits.
+_HK_PATTERN = re.compile(r"^\d{4,5}\.HK$", re.IGNORECASE)
+
+
+def classify_market(symbol: str) -> str:
+    """Classify a ticker symbol into a market code for vendor routing.
+
+    Returns one of ``"cn"``, ``"hk"``, or ``"us"``. The result drives
+    ``market_vendors`` selection in the routing layer.
+
+    Resolution is purely syntactic (no network calls):
+
+    * ``cn`` — A-share 6-digit codes, with or without a ``.SS``/``.SZ``/``.SH``
+      suffix, or with a ``sh``/``sz`` prefix.
+    * ``hk`` — 4-5 digit numeric codes with a ``.HK`` suffix.
+    * ``us`` — everything else, including bare 4-digit numbers (a bare ``0700``
+      without ``.HK`` is treated as a possible US ticker, not HK), crypto,
+      forex, metals, and Yahoo index aliases.
+
+    A bare 6-digit number is classified as ``cn`` because US tickers always
+    contain at least one letter and HK codes are 4-5 digits. Users trading
+    HK should append ``.HK`` explicitly.
+    """
+    if not isinstance(symbol, str) or not symbol.strip():
+        return "us"
+    s = symbol.strip()
+    if any(p.fullmatch(s) for p in _CN_PATTERNS):
+        return "cn"
+    if _HK_PATTERN.fullmatch(s):
+        return "hk"
+    return "us"

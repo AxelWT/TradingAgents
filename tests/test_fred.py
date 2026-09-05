@@ -3,6 +3,7 @@ missing-value handling, lookahead-safe windowing, and router integration.
 
 All API access is mocked, so these run without a network connection or a key.
 """
+
 import copy
 import unittest
 from unittest import mock
@@ -29,7 +30,7 @@ _OBS = {
     "observations": [
         {"date": "2025-06-01", "value": "4.1"},
         {"date": "2025-07-01", "value": "4.3"},
-        {"date": "2025-08-01", "value": "."},   # missing -> skipped
+        {"date": "2025-08-01", "value": "."},  # missing -> skipped
         {"date": "2025-09-01", "value": "4.4"},
     ]
 }
@@ -37,12 +38,14 @@ _OBS = {
 
 def _request_stub(meta=_META, obs=_OBS):
     """Build a _request replacement that dispatches on the endpoint path."""
+
     def _impl(path, params):
         if path == "series":
             return meta
         if path == "series/observations":
             return obs
         raise AssertionError(f"unexpected FRED path: {path}")
+
     return _impl
 
 
@@ -78,8 +81,10 @@ class FredResolutionTests(unittest.TestCase):
 @pytest.mark.unit
 class FredConfigTests(unittest.TestCase):
     def test_missing_key_raises_not_configured(self):
-        with mock.patch.dict("os.environ", {}, clear=True), \
-                self.assertRaises(fred.FredNotConfiguredError):
+        with (
+            mock.patch.dict("os.environ", {}, clear=True),
+            self.assertRaises(fred.FredNotConfiguredError),
+        ):
             fred.get_api_key()
 
     def test_not_configured_is_a_value_error(self):
@@ -161,8 +166,10 @@ class FredFormattingTests(unittest.TestCase):
             captured[path] = params
             return _META if path == "series" else _OBS
 
-        with mock.patch.object(fred, "_fred_today", return_value="2026-01-01"), \
-                mock.patch.object(fred, "_request", side_effect=_capture):
+        with (
+            mock.patch.object(fred, "_fred_today", return_value="2026-01-01"),
+            mock.patch.object(fred, "_request", side_effect=_capture),
+        ):
             fred.get_macro_data("cpi", "2025-09-30", 90)
 
         for path in ("series", "series/observations"):
@@ -181,8 +188,10 @@ class FredFormattingTests(unittest.TestCase):
             captured[path] = params
             return _META if path == "series" else _OBS
 
-        with mock.patch.object(fred, "_fred_today", return_value="2026-08-31"), \
-                mock.patch.object(fred, "_request", side_effect=_capture):
+        with (
+            mock.patch.object(fred, "_fred_today", return_value="2026-08-31"),
+            mock.patch.object(fred, "_request", side_effect=_capture),
+        ):
             fred.get_macro_data("cpi", "2026-09-01", 90)  # local a day ahead of Chicago
 
         for path in ("series", "series/observations"):
@@ -201,10 +210,8 @@ class FredRoutingTests(unittest.TestCase):
         config_module._config = copy.deepcopy(default_config.DEFAULT_CONFIG)
 
     def test_macro_category_routes_to_fred(self):
-        self.assertEqual(
-            interface.get_category_for_method("get_macro_indicators"), "macro_data"
-        )
-        set_config({"data_vendors": {"macro_data": "fred"}})
+        self.assertEqual(interface.get_category_for_method("get_macro_indicators"), "macro_data")
+        set_config({"market_vendors": {"us": {"macro_data": "fred"}}})
         with mock.patch.dict(
             interface.VENDOR_METHODS,
             {"get_macro_indicators": {"fred": lambda *a, **k: "MACRO_OK"}},
@@ -217,7 +224,7 @@ class FredRoutingTests(unittest.TestCase):
         # macro_data is optional: with only fred and no key, the router degrades
         # to a sentinel instead of aborting the run — a missing optional key must
         # not crash an analysis.
-        set_config({"data_vendors": {"macro_data": "fred"}})
+        set_config({"market_vendors": {"us": {"macro_data": "fred"}}})
 
         def _unconfigured(*a, **k):
             raise fred.FredNotConfiguredError("FRED_API_KEY not set")

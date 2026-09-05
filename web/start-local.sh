@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 BACKEND_DIR="backend"
 FRONTEND_DIR="frontend"
 VENV_UVICORN="../../.venv/bin/uvicorn"
+REPO_ROOT="$(cd .. && pwd)"
 
 BACKEND_PID=""
 FRONTEND_PID=""
@@ -26,7 +27,9 @@ start_backend() {
         cd "$BACKEND_DIR"
         export PYTHONPATH="$(pwd)"
         exec "$VENV_UVICORN" app.main:app \
-            --host 0.0.0.0 --port 8000 --reload --log-level info
+            --host 0.0.0.0 --port 8000 --reload --log-level info \
+            --reload-dir "$REPO_ROOT/web/$BACKEND_DIR" \
+            --reload-dir "$REPO_ROOT/tradingagents"
     ) > >(sed -u 's/^/[backend] /') 2>&1 &
     BACKEND_PID=$!
 }

@@ -2,6 +2,7 @@
 condition derives from VendorError, so the router catches base types and any
 vendor slots in without new handling.
 """
+
 import copy
 import unittest
 from unittest import mock
@@ -46,6 +47,7 @@ class HierarchyTests(unittest.TestCase):
         from tradingagents.dataflows.symbol_utils import (
             NoMarketDataError as ReExported,
         )
+
         self.assertIs(ReExported, NoMarketDataError)
 
 
@@ -59,7 +61,7 @@ class RouterHandlesBaseTypesTests(unittest.TestCase):
 
     def test_rate_limit_subclass_caught_by_base(self):
         # A vendor-named rate-limit error skips to the next vendor in the chain.
-        set_config({"data_vendors": {"core_stock_apis": "alpha_vantage,yfinance"}})
+        set_config({"market_vendors": {"us": {"core_stock_apis": "alpha_vantage,yfinance"}}})
 
         def _throttled(*a, **k):
             raise AlphaVantageRateLimitError("slow down")
@@ -73,7 +75,7 @@ class RouterHandlesBaseTypesTests(unittest.TestCase):
         self.assertEqual(out, "YF")
 
     def test_not_configured_falls_through_to_next_vendor(self):
-        set_config({"data_vendors": {"core_stock_apis": "alpha_vantage,yfinance"}})
+        set_config({"market_vendors": {"us": {"core_stock_apis": "alpha_vantage,yfinance"}}})
 
         def _unconfigured(*a, **k):
             raise AlphaVantageNotConfiguredError("no key")
@@ -88,16 +90,19 @@ class RouterHandlesBaseTypesTests(unittest.TestCase):
 
     def test_sole_unconfigured_vendor_surfaces_the_error(self):
         # With no fallback, the not-configured condition must surface (not vanish).
-        set_config({"data_vendors": {"core_stock_apis": "alpha_vantage"}})
+        set_config({"market_vendors": {"us": {"core_stock_apis": "alpha_vantage"}}})
 
         def _unconfigured(*a, **k):
             raise AlphaVantageNotConfiguredError("no key")
 
-        with mock.patch.dict(
-            interface.VENDOR_METHODS,
-            {"get_stock_data": {"alpha_vantage": _unconfigured}},
-            clear=False,
-        ), self.assertRaises(AlphaVantageNotConfiguredError):
+        with (
+            mock.patch.dict(
+                interface.VENDOR_METHODS,
+                {"get_stock_data": {"alpha_vantage": _unconfigured}},
+                clear=False,
+            ),
+            self.assertRaises(AlphaVantageNotConfiguredError),
+        ):
             interface.route_to_vendor("get_stock_data", "AAPL", "2026-01-01", "2026-01-10")
 
 

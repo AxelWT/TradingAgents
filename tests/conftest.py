@@ -45,15 +45,21 @@ def _isolate_config():
     test that sets e.g. ``tool_vendors`` would otherwise leak into later tests
     and make routing behavior order-dependent. Replace the global outright so
     every test starts from a clean DEFAULT_CONFIG.
+
+    Also resets ``analysis_market_var`` (a ContextVar) so a prior test's
+    per-run market doesn't leak into the next.
     """
     import copy
 
     import tradingagents.dataflows.config as config_module
     import tradingagents.default_config as default_config
+    from tradingagents.dataflows.config import analysis_market_var
 
     config_module._config = copy.deepcopy(default_config.DEFAULT_CONFIG)
+    analysis_market_var.set(None)
     yield
     config_module._config = copy.deepcopy(default_config.DEFAULT_CONFIG)
+    analysis_market_var.set(None)
 
 
 @pytest.fixture()
