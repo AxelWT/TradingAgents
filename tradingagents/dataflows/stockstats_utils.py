@@ -237,22 +237,65 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
             data = cached
 
     if data is None:
-        downloaded = yf_retry(
-            lambda: yf.download(
-                canonical,
-                start=start_str,
-                end=end_str,
-                multi_level_index=False,
-                progress=False,
-                auto_adjust=True,
+        try:
+            downloaded = yf_retry(
+                lambda: yf.download(
+                    canonical,
+                    start=start_str,
+                    end=end_str,
+                    multi_level_index=False,
+                    progress=False,
+                    auto_adjust=True,
+                )
             )
-        )
-        downloaded = _ensure_date_column(downloaded.reset_index())
+            downloaded = _ensure_date_column(downloaded.reset_index())
+        except Exception as fetch_exc:
+            # The refetch failed (network/rate-limit/yfinance outage). If a
+            # cached file exists from a prior successful fetch, serve it rather
+            # than crashing the run — stale-but-present is better than absent,
+            # and the staleness guard below still rejects truly dangerous frames.
+            if os.path.exists(data_file):
+                cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
+                if not cached.empty and "Close" in cached.columns:
+                    logger.warning(
+                        "yfinance refetch failed for %s (%s); serving cached "
+                        "data (latest row may be stale).",
+                        canonical,
+                        fetch_exc,
+                    )
+                    downloaded = cached
+                else:
+                    raise NoMarketDataError(
+                        symbol,
+                        canonical,
+                        f"Yahoo Finance returned no rows and cache is empty/invalid "
+                        f"(fetch error: {fetch_exc})",
+                    ) from fetch_exc
+            else:
+                raise NoMarketDataError(
+                    symbol,
+                    canonical,
+                    f"Yahoo Finance returned no rows (fetch error: {fetch_exc})",
+                ) from fetch_exc
         # Only cache real data — never persist an empty frame.
-        if downloaded.empty or "Close" not in downloaded.columns:
-            raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
-        downloaded.to_csv(data_file, index=False, encoding="utf-8")
-        data = downloaded
+        if not downloaded.empty and "Close" in downloaded.columns:
+            downloaded.to_csv(data_file, index=False, encoding="utf-8")
+            data = downloaded
+        else:
+            # Download returned empty; fall back to cache if available.
+            if os.path.exists(data_file):
+                cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
+                if not cached.empty and "Close" in cached.columns:
+                    logger.warning(
+                        "yfinance returned empty for %s; serving cached data "
+                        "(latest row may be stale).",
+                        canonical,
+                    )
+                    data = cached
+                else:
+                    raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
+            else:
+                raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
 
     data = _clean_dataframe(data)
 
