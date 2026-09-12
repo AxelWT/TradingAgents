@@ -51,40 +51,55 @@ _DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 # Non-colliding ones (lpr, shibor, m2, rmb_usd) keep short names.
 _INDICATORS: dict[str, dict] = {
     "lpr": {
-        "report_name": "RPT_RATE_LPR",
-        "columns": "REPORT_DATE,LPR1Y",
-        "date_field": "REPORT_DATE",
+        # Eastmoney 2024+ 改版：reportName 由 RPT_RATE_LPR 改为 RPTA_WEB_RATE，
+        # 日期字段由 REPORT_DATE 改为 TRADE_DATE，且该报表需公开 token。
+        # LPR1Y=1年期, LPR5Y=5年期, RATE_1=贷款基准利率, RATE_2=存款基准利率。
+        "report_name": "RPTA_WEB_RATE",
+        "columns": "TRADE_DATE,LPR1Y",
+        "date_field": "TRADE_DATE",
         "value_field": "LPR1Y",
         "label": "Loan Prime Rate (1Y LPR)",
         "unit": "%",
-        "sort_columns": "REPORT_DATE",
+        "sort_columns": "TRADE_DATE",
         "sort_types": "-1",
+        "token": "894050c76af8597a853f5b408b759f5d",
     },
     "shibor_overnight": {
-        "report_name": "RPT_RATE_SHIBOR",
-        "columns": "REPORT_DATE,ON",
+        # Eastmoney 2024+ 改版：reportName 由 RPT_RATE_SHIBOR 改为
+        # RPT_IMP_INTRESTRATEN（通用利率库），用 filter 定位 SHIBOR 隔夜：
+        #   MARKET_CODE="001" (上海银行同业拆借市场) + INDICATOR_ID="001" (隔夜)
+        # 值字段 IR_RATE，日期字段 REPORT_DATE。其余期限 INDICATOR_ID：
+        # 101=1W, 102=2W, 201=1M, 203=3M, 206=6M, 209=9M, 301=1Y。
+        "report_name": "RPT_IMP_INTRESTRATEN",
+        "columns": "REPORT_DATE,IR_RATE",
+        "filter": '(MARKET_CODE="001")(INDICATOR_ID="001")',
         "date_field": "REPORT_DATE",
-        "value_field": "ON",
+        "value_field": "IR_RATE",
         "label": "SHIBOR (overnight)",
         "unit": "%",
         "sort_columns": "REPORT_DATE",
         "sort_types": "-1",
     },
     "cn_cpi": {
+        # Eastmoney 2024+ 改版：字段由 CPI_YOY 改为 NATIONAL_SAME（全国同比）。
+        # 其余可用字段：NATIONAL_BASE/SEQUENTIAL/ACCUMULATE、CITY_*、RURAL_*。
         "report_name": "RPT_ECONOMY_CPI",
-        "columns": "REPORT_DATE,CPI_YOY",
+        "columns": "REPORT_DATE,NATIONAL_SAME",
         "date_field": "REPORT_DATE",
-        "value_field": "CPI_YOY",
+        "value_field": "NATIONAL_SAME",
         "label": "China CPI (YoY)",
         "unit": "%",
         "sort_columns": "REPORT_DATE",
         "sort_types": "-1",
     },
     "cn_ppi": {
+        # Eastmoney 2024+ 改版：PPI 报表字段名与 CPI 不同——PPI 用 BASE_SAME
+        # （全国同比），CPI 用 NATIONAL_SAME。BASE=当月值, BASE_SAME=同比,
+        # BASE_ACCUMULATE=累计。
         "report_name": "RPT_ECONOMY_PPI",
-        "columns": "REPORT_DATE,PPI_YOY",
+        "columns": "REPORT_DATE,BASE_SAME",
         "date_field": "REPORT_DATE",
-        "value_field": "PPI_YOY",
+        "value_field": "BASE_SAME",
         "label": "China PPI (YoY)",
         "unit": "%",
         "sort_columns": "REPORT_DATE",
@@ -101,27 +116,39 @@ _INDICATORS: dict[str, dict] = {
         "sort_types": "-1",
     },
     "m2": {
-        "report_name": "RPT_ECONOMY_MONEY_SUPPLY",
-        "columns": "REPORT_DATE,M2_YOY",
+        # Eastmoney 2024+ 改版：reportName 由 RPT_ECONOMY_MONEY_SUPPLY 改为
+        # RPT_ECONOMY_CURRENCY_SUPPLY；M2 同比字段由 M2_YOY 改为 FREE_CASH_SAME。
+        # 其余可用字段：BASIC_CURRENCY_*(M0)、CURRENCY_*(M1)、FREE_CASH(M2 期末值)。
+        "report_name": "RPT_ECONOMY_CURRENCY_SUPPLY",
+        "columns": "REPORT_DATE,FREE_CASH_SAME",
         "date_field": "REPORT_DATE",
-        "value_field": "M2_YOY",
+        "value_field": "FREE_CASH_SAME",
         "label": "China M2 (YoY)",
         "unit": "%",
         "sort_columns": "REPORT_DATE",
         "sort_types": "-1",
     },
     "social_financing": {
-        "report_name": "RPT_ECONOMY_FIN_SOCIAL",
-        "columns": "REPORT_DATE,TOTAL_STOCK_YOY",
+        # Eastmoney 2024+ 改版：原 RPT_ECONOMY_FIN_SOCIAL（社会融资规模）已下线，
+        # Eastmoney 经济数据页面不再提供独立的社会融资规模序列。降级为同维度的
+        # "新增人民币贷款"（RPT_ECONOMY_RMB_LOAN），用 RMB_LOAN_SAME（同比）作为
+        # 信用扩张的代理指标。语义有差异（贷款 vs 社融），但同为信贷/流动性指标。
+        # 若后续 Eastmoney 恢复社融报表，改回 TOTAL_STOCK_YOY 即可。
+        "report_name": "RPT_ECONOMY_RMB_LOAN",
+        "columns": "REPORT_DATE,RMB_LOAN_SAME",
         "date_field": "REPORT_DATE",
-        "value_field": "TOTAL_STOCK_YOY",
-        "label": "Social Financing Stock (YoY)",
+        "value_field": "RMB_LOAN_SAME",
+        "label": "New RMB Loans (YoY, social-financing proxy)",
         "unit": "%",
         "sort_columns": "REPORT_DATE",
         "sort_types": "-1",
     },
     "rmb_usd": {
-        # Central parity rate (中间价) from push2his daily kline.
+        # Eastmoney 2024+ 改版：原 RPT_FX_RMBUSD（人民币汇率中间价）报表已下线，
+        # 且 Eastmoney 经济数据页面不再提供独立的中间价序列。该指标暂时不可用：
+        # 保留别名但指向已失效的报表，_fetch_series 会抛 NoMarketDataError，
+        # route_to_vendor 层会降级为哨兵字符串。若需恢复，可改用中国外汇交易中心
+        # 或 push2his 外汇行情接口（需重新映射 secid）。
         "report_name": "RPT_FX_RMBUSD",
         "columns": "REPORT_DATE,MIDDLE",
         "date_field": "REPORT_DATE",
@@ -144,7 +171,9 @@ def _fetch_series(spec: dict, curr_date: str, look_back_days: int) -> pd.DataFra
     params = {
         "reportName": spec["report_name"],
         "columns": spec["columns"],
-        "filter": "",
+        # 通用指标库（如 LPR）靠 filter=(INDICATOR_ID="...") 区分具体序列；
+        # 专属报表不带 filter。
+        "filter": spec.get("filter", ""),
         "pageNumber": "1",
         "pageSize": "500",
         "sortColumns": spec["sort_columns"],
@@ -152,6 +181,10 @@ def _fetch_series(spec: dict, curr_date: str, look_back_days: int) -> pd.DataFra
         "source": "WEB",
         "client": "WEB",
     }
+    # 部分报表（如 LPR 的 RPTA_WEB_RATE）需要公开 token（Eastmoney 前端硬编码，
+    # 非个人凭证）。
+    if "token" in spec:
+        params["token"] = spec["token"]
     r = _em_get(_DATACENTER_URL, params=params, timeout=15)
     d = r.json()
     rows = d.get("result", {}).get("data") if d.get("result") else None
@@ -162,7 +195,15 @@ def _fetch_series(spec: dict, curr_date: str, look_back_days: int) -> pd.DataFra
     date_field = spec["date_field"]
     value_field = spec["value_field"]
     if date_field not in df.columns or value_field not in df.columns:
-        return pd.DataFrame(columns=["date", "value"])
+        # 配置的字段名与 Eastmoney 当前返回不匹配（字段漂移）。把可用字段写进
+        # 异常信息，便于排查 —— 之前静默返回空 DataFrame 会导致下游只报"no rows"，
+        # 看不到真实字段名。
+        raise NoMarketDataError(
+            spec.get("label", spec["report_name"]),
+            spec["report_name"],
+            f"field drift: configured date/value='{date_field}'/'{value_field}' "
+            f"not in returned columns {list(df.columns)}",
+        )
 
     df = df[[date_field, value_field]].copy()
     df.columns = ["date", "value"]

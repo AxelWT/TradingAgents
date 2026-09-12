@@ -105,9 +105,9 @@ class TestGetFundamentalsErrorContract(unittest.TestCase):
 
 @pytest.mark.unit
 class TestGetBalanceSheetErrorContract(unittest.TestCase):
-    def test_raises_when_sina_empty(self):
+    def test_raises_when_em_empty(self):
         with (
-            mock.patch.object(a_stock, "_get_financial_report_sina", return_value=pd.DataFrame()),
+            mock.patch.object(a_stock, "_get_financial_report_em", return_value=pd.DataFrame()),
             self.assertRaises(NoMarketDataError),
         ):
             a_stock.get_balance_sheet("600519", "quarterly", "2026-01-01")

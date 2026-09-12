@@ -47,8 +47,8 @@ class TestChinaMacroFetch(unittest.TestCase):
 
     def test_lpr_returns_formatted_report(self):
         rows = [
-            {"REPORT_DATE": "2025-12-20", "LPR1Y": 3.10},
-            {"REPORT_DATE": "2026-01-20", "LPR1Y": 3.05},
+            {"TRADE_DATE": "2025-12-20", "LPR1Y": 3.10},
+            {"TRADE_DATE": "2026-01-20", "LPR1Y": 3.05},
         ]
         with mock.patch.object(china_macro, "_em_get", return_value=self._mock_response(rows)):
             result = china_macro.get_macro_data("lpr", "2026-02-01", 365)
@@ -59,8 +59,8 @@ class TestChinaMacroFetch(unittest.TestCase):
     def test_filters_rows_after_curr_date(self):
         # A row dated after curr_date must not appear (look-ahead protection).
         rows = [
-            {"REPORT_DATE": "2026-01-20", "LPR1Y": 3.05},
-            {"REPORT_DATE": "2026-03-20", "LPR1Y": 2.90},  # after curr_date
+            {"TRADE_DATE": "2026-01-20", "LPR1Y": 3.05},
+            {"TRADE_DATE": "2026-03-20", "LPR1Y": 2.90},  # after curr_date
         ]
         with mock.patch.object(china_macro, "_em_get", return_value=self._mock_response(rows)):
             result = china_macro.get_macro_data("lpr", "2026-02-01", 365)
@@ -85,7 +85,7 @@ class TestChinaMacroFetch(unittest.TestCase):
     def test_default_lookback_365_days(self):
         # look_back_days=None → 365-day window. Verify by checking the fetch
         # is called (rows returned), not crashing on None.
-        rows = [{"REPORT_DATE": "2026-01-01", "LPR1Y": 3.10}]
+        rows = [{"TRADE_DATE": "2026-01-01", "LPR1Y": 3.10}]
         with mock.patch.object(china_macro, "_em_get", return_value=self._mock_response(rows)):
             result = china_macro.get_macro_data("lpr", "2026-02-01", None)
         self.assertIn("365 days", result)

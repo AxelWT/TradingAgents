@@ -1146,50 +1146,97 @@ def _sina_stock_code(code: str) -> str:
     return f"{_get_prefix(code)}{code}"
 
 
-def _get_financial_report_sina(
+def _secucode(code: str) -> str:
+    """6-digit A-stock code → Eastmoney SECUCODE (600519.SH / 000001.SZ / 832000.BJ)."""
+    prefix = _get_prefix(code)
+    return f"{code}.{prefix.upper()}"
+
+
+# Eastmoney datacenter report descriptors for the three financial statements.
+# RPT_DMSK_FN_BALANCE / RPT_DMSK_FN_INCOME are the "new" (2024+) simplified
+# reports; RPT_F10_FINANCE_GCASHFLOW is the full cashflow report.
+# Verified 2026-09 against live Eastmoney datacenter for 600519.
+_EM_FINANCIAL_REPORTS = {
+    "资产负债表": {
+        "report_name": "RPT_DMSK_FN_BALANCE",
+        # Key fields (full report has 57; select the headline items for CSV output)
+        "columns": (
+            "REPORT_DATE,NOTICE_DATE,TOTAL_ASSETS,FIXED_ASSET,MONETARYFUNDS,"
+            "MONETARYFUNDS_RATIO,ACCOUNTS_RECE,ACCOUNTS_RECE_RATIO,INVENTORY,"
+            "INVENTORY_RATIO,TOTAL_LIABILITIES,ACCOUNTS_PAYABLE,ACCOUNTS_PAYABLE_RATIO,"
+            "TOTAL_EQUITY,TOTAL_EQUITY_RATIO,TOTAL_ASSETS_RATIO,TOTAL_LIAB_RATIO,"
+            "CURRENT_RATIO,DEBT_ASSET_RATIO"
+        ),
+    },
+    "利润表": {
+        "report_name": "RPT_DMSK_FN_INCOME",
+        "columns": (
+            "REPORT_DATE,NOTICE_DATE,PARENT_NETPROFIT,TOTAL_OPERATE_INCOME,"
+            "TOTAL_OPERATE_COST,TOE_RATIO,OPERATE_COST,OPERATE_EXPENSE,"
+            "OPERATE_EXPENSE_RATIO,SALE_EXPENSE,MANAGE_EXPENSE,FINANCE_EXPENSE,"
+            "OPERATE_PROFIT,TOTAL_PROFIT,INCOME_TAX,DEDUCT_PARENT_NETPROFIT,"
+            "OPERATE_PROFIT_RATIO,PARENT_NETPROFIT_RATIO"
+        ),
+    },
+    "现金流量表": {
+        "report_name": "RPT_F10_FINANCE_GCASHFLOW",
+        "columns": (
+            "REPORT_DATE,NOTICE_DATE,NETCASH_OPERATE,NETCASH_INVEST,NETCASH_FINANCE,"
+            "CCE_ADD,BEGIN_CCE,END_CCE,NETPROFIT,SALES_SERVICES,TOTAL_OPERATE_INFLOW,"
+            "TOTAL_OPERATE_OUTFLOW,TOTAL_INVEST_INFLOW,TOTAL_INVEST_OUTFLOW,"
+            "TOTAL_FINANCE_INFLOW,TOTAL_FINANCE_OUTFLOW"
+        ),
+    },
+}
+
+
+def _get_financial_report_em(
     code: str,
     report_type: str,
     freq: str,
     curr_date: str = None,
 ) -> pd.DataFrame:
-    """Shared helper: fetch financial report via Sina direct HTTP API.
+    """Fetch financial report via Eastmoney datacenter (direct HTTP).
+
+    Replaces the legacy Sina ``getFinanceReport2022`` endpoint which stopped
+    returning report rows in 2024+. Uses Eastmoney's RPT_DMSK_FN_* / RPT_F10_*
+    reports via ``_em_get`` (throttled, shares the a_stock session).
 
     report_type: '资产负债表' | '利润表' | '现金流量表'
     """
-    _report_type_map = {
-        "资产负债表": "fzb",
-        "利润表": "lrb",
-        "现金流量表": "llb",
-    }
-    source_type = _report_type_map.get(report_type, "lrb")
-
-    paper_code = _sina_stock_code(code)
-    url = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
-    params = {
-        "paperCode": paper_code,
-        "source": source_type,
-        "type": "0",
-        "page": "1",
-        "num": "20",
-    }
-    r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
-    d = r.json()
-
-    result = d.get("result", {}).get("data", {})
-    items = result.get(source_type, [])
-    if not isinstance(items, list) or not items:
+    spec = _EM_FINANCIAL_REPORTS.get(report_type)
+    if spec is None:
         return pd.DataFrame()
 
-    df = pd.DataFrame(items)
+    secucode = _secucode(code)
+    params = {
+        "reportName": spec["report_name"],
+        "columns": spec["columns"],
+        "filter": f'(SECUCODE="{secucode}")',
+        "pageNumber": "1",
+        "pageSize": "20",
+        "sortColumns": "REPORT_DATE",
+        "sortTypes": "-1",
+        "source": "WEB",
+        "client": "WEB",
+    }
+    r = _em_get(_DATACENTER_URL, params=params, timeout=15)
+    d = r.json()
 
-    if curr_date and "报告日" in df.columns:
-        df["报告日"] = pd.to_datetime(df["报告日"], errors="coerce")
-        cutoff = pd.to_datetime(curr_date)
-        df = df[df["报告日"] <= cutoff]
+    rows = d.get("result", {}).get("data") if d.get("result") else None
+    if not rows:
+        return pd.DataFrame()
 
-    if freq.lower() == "annual" and "报告日" in df.columns:
-        months = pd.to_datetime(df["报告日"], errors="coerce").dt.month
-        df = df[months == 12]
+    df = pd.DataFrame(rows)
+
+    if "REPORT_DATE" in df.columns:
+        df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"], errors="coerce")
+        if curr_date:
+            cutoff = pd.to_datetime(curr_date)
+            df = df[df["REPORT_DATE"] <= cutoff]
+        if freq.lower() == "annual":
+            months = df["REPORT_DATE"].dt.month
+            df = df[months == 12]
 
     return df.head(8)
 
@@ -1199,18 +1246,18 @@ def get_balance_sheet(
     freq: Annotated[str, "frequency: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None,
 ) -> str:
-    """Get balance sheet via Sina direct HTTP API."""
+    """Get balance sheet via Eastmoney datacenter (direct HTTP)."""
     code = _normalize_ticker(ticker)
 
-    df = _get_financial_report_sina(code, "资产负债表", freq, curr_date)
+    df = _get_financial_report_em(code, "资产负债表", freq, curr_date)
 
     if df.empty:
-        raise NoMarketDataError(ticker, code, "no balance sheet rows from sina")
+        raise NoMarketDataError(ticker, code, "no balance sheet rows from eastmoney")
 
     csv_string = df.to_csv(index=False)
 
     header = f"# Balance Sheet for {code} (A-stock, {freq})\n"
-    header += "# Data source: sina direct HTTP\n"
+    header += "# Data source: eastmoney datacenter (direct HTTP)\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
     return header + csv_string
@@ -1224,18 +1271,18 @@ def get_cashflow(
     freq: Annotated[str, "frequency: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None,
 ) -> str:
-    """Get cash flow statement via Sina direct HTTP API."""
+    """Get cash flow statement via Eastmoney datacenter (direct HTTP)."""
     code = _normalize_ticker(ticker)
 
-    df = _get_financial_report_sina(code, "现金流量表", freq, curr_date)
+    df = _get_financial_report_em(code, "现金流量表", freq, curr_date)
 
     if df.empty:
-        raise NoMarketDataError(ticker, code, "no cash flow rows from sina")
+        raise NoMarketDataError(ticker, code, "no cash flow rows from eastmoney")
 
     csv_string = df.to_csv(index=False)
 
     header = f"# Cash Flow for {code} (A-stock, {freq})\n"
-    header += "# Data source: sina direct HTTP\n"
+    header += "# Data source: eastmoney datacenter (direct HTTP)\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
     return header + csv_string
@@ -1249,18 +1296,18 @@ def get_income_statement(
     freq: Annotated[str, "frequency: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None,
 ) -> str:
-    """Get income statement via Sina direct HTTP API."""
+    """Get income statement via Eastmoney datacenter (direct HTTP)."""
     code = _normalize_ticker(ticker)
 
-    df = _get_financial_report_sina(code, "利润表", freq, curr_date)
+    df = _get_financial_report_em(code, "利润表", freq, curr_date)
 
     if df.empty:
-        raise NoMarketDataError(ticker, code, "no income statement rows from sina")
+        raise NoMarketDataError(ticker, code, "no income statement rows from eastmoney")
 
     csv_string = df.to_csv(index=False)
 
     header = f"# Income Statement for {code} (A-stock, {freq})\n"
-    header += "# Data source: sina direct HTTP\n"
+    header += "# Data source: eastmoney datacenter (direct HTTP)\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
     return header + csv_string
