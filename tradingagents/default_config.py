@@ -178,8 +178,16 @@ DEFAULT_CONFIG = _apply_env_overrides(
                 "prediction_markets": "polymarket",
             },
             "hk": {
+                # Hong Kong market. yfinance serves HK stocks via .HK suffix.
+                # a_stock rejects non-A-share codes, alpha_vantage has limited
+                # HK coverage. macro_data defaults to fred (HK macro is thin on
+                # FRED but the routing layer degrades gracefully).
                 "core_stock_apis": "yfinance",
+                "technical_indicators": "yfinance",
                 "fundamental_data": "yfinance",
+                "news_data": "yfinance",
+                "macro_data": "fred",
+                "prediction_markets": "polymarket",
             },
         },
         # Tool-level configuration (market-agnostic escape hatch, highest priority).
