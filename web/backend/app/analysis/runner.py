@@ -305,6 +305,16 @@ def _execute_analysis(task: AnalysisTask, config: dict, adapter, db: Session):
     instrument_context = graph.resolve_instrument_context(
         config["ticker"], config.get("asset_type", "stock")
     )
+
+    # Bind the run's market (cn/hk/us) from the ticker so non-symbol methods
+    # (get_macro_indicators, get_global_news) route to market-appropriate
+    # vendors. The CLI does this via propagate()→checkpoint_scope()→
+    # begin_checkpoint()→_set_analysis_market(), but this path streams
+    # directly, so call it explicitly. Without this, analysis_market_var stays
+    # None → route_to_vendor falls back to "us" → A-share runs hit yfinance/
+    # fred instead of a_stock/china_macro.
+    graph._set_analysis_market(config["ticker"])
+
     init_agent_state = graph.propagator.create_initial_state(
         config["ticker"],
         config["trade_date"],
