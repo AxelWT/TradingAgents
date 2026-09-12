@@ -8,6 +8,7 @@ A free API key (https://fred.stlouisfed.org/docs/api/api_key.html) is read from
 ``FRED_API_KEY``; if it is unset the vendor raises ``FredNotConfiguredError`` so
 the routing layer treats it as "unavailable" rather than a hard crash.
 """
+
 import logging
 import os
 from datetime import datetime, timedelta
@@ -15,7 +16,7 @@ from datetime import datetime, timedelta
 import pytz
 import requests
 
-from .errors import VendorNotConfiguredError
+from .errors import NoMarketDataError, VendorNotConfiguredError
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +112,12 @@ def _resolve_series_id(indicator: str) -> str:
     if key in MACRO_SERIES:
         return MACRO_SERIES[key]
     candidate = indicator.strip().upper()
-    # FRED series IDs never contain whitespace and are short; reject anything
-    # else (a descriptive phrase the LLM passed) rather than 400ing the API.
-    if not candidate or len(candidate) > 30 or any(c.isspace() for c in candidate):
+    # FRED series IDs are strictly short and alphanumeric (no underscores, hyphens,
+    # or spaces). Reject anything else — including CN-specific aliases like
+    # "cn_cpi" or "shibor_overnight" that slip through as raw candidates — rather
+    # than letting them 400 the API. The routing layer catches the resulting
+    # NoMarketDataError and falls through to the next vendor (e.g. china_macro).
+    if not candidate or len(candidate) > 30 or not candidate.isalnum():
         raise ValueError(
             f"'{indicator}' is not a known macro alias or a valid FRED series ID. "
             f"Use an alias (e.g. 'cpi', 'unemployment', '10y_treasury') or a raw "
@@ -135,9 +139,7 @@ def _fred_today() -> str:
 def _request(path: str, params: dict) -> dict:
     """GET a FRED endpoint, surfacing FRED's JSON error body on a bad request."""
     api_params = {**params, "api_key": get_api_key(), "file_type": "json"}
-    response = requests.get(
-        f"{FRED_API_BASE}/{path}", params=api_params, timeout=REQUEST_TIMEOUT
-    )
+    response = requests.get(f"{FRED_API_BASE}/{path}", params=api_params, timeout=REQUEST_TIMEOUT)
     # FRED returns 400 with a JSON {"error_message": ...} for unknown series IDs
     # or malformed params; turn that into a clear, actionable error.
     if response.status_code == 400:
@@ -189,19 +191,30 @@ def get_macro_data(
     pit = min(curr_date, _fred_today())
     realtime = {"realtime_start": pit, "realtime_end": pit}
 
-    # Invalid LLM-supplied indicator: return guidance rather than raising, so a
-    # bad argument doesn't abort the run (the routing layer also degrades macro
-    # data, but a specific message is more useful to the analyst).
+    # Invalid LLM-supplied indicator: raise NoMarketDataError so the routing
+    # layer can fall through to the next vendor (e.g. china_macro for CN-specific
+    # aliases like 'cn_cpi' that FRED doesn't serve). Previously this returned a
+    # guidance string, which the routing treated as "success" — preventing
+    # fallback and silently dropping macro data.
     try:
         series_id = _resolve_series_id(indicator)
     except ValueError as e:
-        return f"FRED: {e}"
+        raise NoMarketDataError(indicator, indicator, str(e)) from e
 
-    meta = _request("series", {"series_id": series_id, **realtime}).get("seriess") or []
+    # FRED API errors (unknown series, 400) → NoMarketDataError so routing can
+    # fall through. This covers CN aliases like 'lpr'/'m2' that pass the
+    # alphanumeric check but don't exist as FRED series.
+    try:
+        meta = _request("series", {"series_id": series_id, **realtime}).get("seriess") or []
+    except ValueError as e:
+        raise NoMarketDataError(indicator, indicator, str(e)) from e
+
     if not meta:
-        return (
+        raise NoMarketDataError(
+            indicator,
+            indicator,
             f"FRED series '{series_id}' not found. Pass a known alias "
-            f"(e.g. 'cpi', 'unemployment') or a valid FRED series ID."
+            f"(e.g. 'cpi', 'unemployment') or a valid FRED series ID.",
         )
     info = meta[0]
     title = info.get("title", series_id)
@@ -209,22 +222,23 @@ def get_macro_data(
     frequency = info.get("frequency", "")
     seasonal = info.get("seasonal_adjustment_short", "")
 
-    observations = _request(
-        "series/observations",
-        {
-            "series_id": series_id,
-            "observation_start": start_date,
-            "observation_end": curr_date,
-            "sort_order": "asc",
-            **realtime,
-        },
-    ).get("observations", [])
+    try:
+        observations = _request(
+            "series/observations",
+            {
+                "series_id": series_id,
+                "observation_start": start_date,
+                "observation_end": curr_date,
+                "sort_order": "asc",
+                **realtime,
+            },
+        ).get("observations", [])
+    except ValueError as e:
+        raise NoMarketDataError(indicator, indicator, str(e)) from e
 
     # FRED encodes a missing observation as ".".
     points = [
-        (o["date"], o["value"])
-        for o in observations
-        if o.get("value") not in (".", None, "")
+        (o["date"], o["value"]) for o in observations if o.get("value") not in (".", None, "")
     ]
 
     header = (
@@ -264,9 +278,7 @@ def get_macro_data(
         note = f"\n_(showing the most recent {MAX_ROWS} of {len(points)} observations)_\n"
 
     table = (
-        "\n| Date | Value |\n| --- | --- |\n"
-        + "\n".join(f"| {d} | {v} |" for d, v in shown)
-        + "\n"
+        "\n| Date | Value |\n| --- | --- |\n" + "\n".join(f"| {d} | {v} |" for d, v in shown) + "\n"
     )
 
     return header + summary + note + table

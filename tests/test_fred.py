@@ -14,6 +14,7 @@ import tradingagents.dataflows.config as config_module
 import tradingagents.default_config as default_config
 from tradingagents.dataflows import fred, interface
 from tradingagents.dataflows.config import set_config
+from tradingagents.dataflows.errors import NoMarketDataError
 
 # A small, stable set of observations to format against.
 _META = {
@@ -65,17 +66,24 @@ class FredResolutionTests(unittest.TestCase):
         self.assertEqual(fred._resolve_series_id("MyCustomSeries"), "MYCUSTOMSERIES")
 
     def test_descriptive_phrase_is_rejected(self):
-        # An LLM phrase (spaces / too long) is not a series ID — reject up front
-        # with guidance rather than 400ing the API.
-        for bad in ("bank of japan rate", "the unemployment number", "X" * 31):
+        # An LLM phrase (spaces / too long / non-alphanumeric) is not a series ID
+        # — reject up front with guidance rather than 400ing the API.
+        for bad in (
+            "bank of japan rate",
+            "the unemployment number",
+            "X" * 31,
+            "cn_cpi",
+            "shibor_overnight",
+            "social_financing",
+        ):
             with self.assertRaises(ValueError):
                 fred._resolve_series_id(bad)
 
-    def test_get_macro_data_returns_guidance_on_bad_indicator(self):
-        # Invalid indicator -> actionable message, not a crash (no API call).
-        out = fred.get_macro_data("bank of japan rate", "2026-01-01")
-        self.assertIn("FRED", out)
-        self.assertIn("not a known macro alias", out)
+    def test_get_macro_data_raises_no_market_data_on_bad_indicator(self):
+        # Invalid indicator → NoMarketDataError (not a guidance string) so the
+        # routing layer can fall through to the next vendor (e.g. china_macro).
+        with self.assertRaises(NoMarketDataError):
+            fred.get_macro_data("bank of japan rate", "2026-01-01")
 
 
 @pytest.mark.unit
@@ -117,13 +125,15 @@ class FredFormattingTests(unittest.TestCase):
             out = fred.get_macro_data("unemployment", "2025-09-30", 30)
         self.assertIn("No observations", out)
 
-    def test_unknown_series_returns_not_found_message(self):
-        # A well-formed but unknown series ID returns guidance, not a crash, so
-        # the run is not aborted over an optional macro lookup.
+    def test_unknown_series_raises_no_market_data(self):
+        # A well-formed but unknown series ID → NoMarketDataError (not a guidance
+        # string) so the routing layer can fall through to the next vendor.
         no_series = {"seriess": []}
-        with mock.patch.object(fred, "_request", side_effect=_request_stub(meta=no_series)):
-            out = fred.get_macro_data("totally_unknown_xyz", "2025-09-30", 30)
-        self.assertIn("not found", out)
+        with (
+            mock.patch.object(fred, "_request", side_effect=_request_stub(meta=no_series)),
+            self.assertRaises(NoMarketDataError),
+        ):
+            fred.get_macro_data("XYZABC", "2025-09-30", 30)
 
     def test_long_series_is_truncated_but_change_uses_full_range(self):
         # Build > MAX_ROWS observations deterministically.
