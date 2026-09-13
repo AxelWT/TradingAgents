@@ -68,6 +68,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           TUSHARE_API_KEY: ${{ secrets.TUSHARE_API_KEY }}
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
           SMTP_HOST: ${{ vars.SMTP_HOST }}
@@ -103,6 +104,7 @@ jobs:
           FRED_API_KEY=$FRED_API_KEY
           TUSHARE_API_KEY=$TUSHARE_API_KEY
           ALPHA_VANTAGE_API_KEY=$ALPHA_VANTAGE_API_KEY
+          TWELVE_DATA_API_KEY=$TWELVE_DATA_API_KEY
           # Web backend
           JWT_SECRET_KEY=$JWT_SECRET_KEY
           CORS_ORIGINS=$CORS_ORIGINS
