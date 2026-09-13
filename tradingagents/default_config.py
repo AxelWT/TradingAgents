@@ -180,12 +180,15 @@ DEFAULT_CONFIG = _apply_env_overrides(
             "hk": {
                 # Hong Kong market. yfinance serves HK stocks via .HK suffix.
                 # a_stock rejects non-A-share codes, alpha_vantage has limited
-                # HK coverage. macro_data defaults to fred (HK macro is thin on
-                # FRED but the routing layer degrades gracefully).
+                # HK coverage. News uses hk_stock (Eastmoney search, covers HK
+                # companies) as primary with yfinance as fallback — Yahoo
+                # Finance news frequently times out for HK tickers.
+                # macro_data defaults to fred (HK macro is thin on FRED but
+                # the routing layer degrades gracefully).
                 "core_stock_apis": "yfinance",
                 "technical_indicators": "yfinance",
                 "fundamental_data": "yfinance",
-                "news_data": "yfinance",
+                "news_data": "hk_stock,yfinance",
                 "macro_data": "fred",
                 "prediction_markets": "polymarket",
             },
