@@ -55,6 +55,7 @@ def _within_window(posts, start_date, end_date):
             kept.append(p)
     return kept
 
+
 _API = "https://www.reddit.com/r/{sub}/search.json?{qs}"
 _RSS = "https://www.reddit.com/r/{sub}/search.rss?{qs}"
 # A descriptive, identified User-Agent (per Reddit's API etiquette). Reddit
@@ -71,13 +72,19 @@ DEFAULT_SUBREDDITS = ("wallstreetbets", "stocks", "investing")
 
 
 def _search_qs(ticker: str, limit: int) -> str:
-    return urlencode({
-        "q": ticker,
-        "restrict_sr": "on",
-        "sort": "new",
-        "t": "week",  # last 7 days
-        "limit": limit,
-    })
+    # Use quoted search to match the ticker as a whole word, not a substring.
+    # Without quotes, "TSLA" matches posts containing "TSLA" anywhere (e.g. in
+    # a URL or a paragraph about another stock that happens to mention it).
+    # Reddit's search engine supports double-quote exact phrase matching.
+    return urlencode(
+        {
+            "q": f'"{ticker}"',
+            "restrict_sr": "on",
+            "sort": "new",
+            "t": "week",  # last 7 days
+            "limit": limit,
+        }
+    )
 
 
 def _iso_to_timestamp(iso_str: str | None) -> float | None:
@@ -170,7 +177,9 @@ def _fetch_subreddit_rss(
             wait = retry_after if retry_after is not None else _jitter(_RETRY_FALLBACK_SECONDS)
             logger.warning(
                 "Reddit RSS 429 for r/%s · %s — backing off %.1fs then retrying once",
-                sub, ticker, wait,
+                sub,
+                ticker,
+                wait,
             )
             time.sleep(wait)
             return _fetch_subreddit_rss(ticker, sub, limit, timeout, _retry=False)
@@ -187,16 +196,18 @@ def _fetch_subreddit_rss(
         title_el = entry.find("atom:title", _ATOM_NS)
         published_el = entry.find("atom:published", _ATOM_NS)
         content_el = entry.find("atom:content", _ATOM_NS)
-        posts.append({
-            "title": (title_el.text if title_el is not None else "") or "",
-            "score": None,
-            "num_comments": None,
-            "created_utc": _iso_to_timestamp(
-                published_el.text if published_el is not None else None
-            ),
-            "selftext": _strip_html(content_el.text if content_el is not None else ""),
-            "source": "rss",
-        })
+        posts.append(
+            {
+                "title": (title_el.text if title_el is not None else "") or "",
+                "score": None,
+                "num_comments": None,
+                "created_utc": _iso_to_timestamp(
+                    published_el.text if published_el is not None else None
+                ),
+                "selftext": _strip_html(content_el.text if content_el is not None else ""),
+                "source": "rss",
+            }
+        )
     return posts
 
 
@@ -224,7 +235,9 @@ def _fetch_subreddit_json(
     except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
         logger.warning(
             "Reddit JSON fetch failed for r/%s · %s: %s — falling back to RSS feed.",
-            sub, ticker, exc,
+            sub,
+            ticker,
+            exc,
         )
         return _fetch_subreddit_rss(ticker, sub, limit, timeout)
 
@@ -272,11 +285,14 @@ def fetch_reddit_posts(
     for i, sub in enumerate(subreddits):
         if i > 0 and inter_request_delay:
             time.sleep(_jitter(inter_request_delay))
-        posts = _within_window(_fetch_subreddit(ticker, sub, limit_per_sub, timeout),
-                               start_date, end_date)
+        posts = _within_window(
+            _fetch_subreddit(ticker, sub, limit_per_sub, timeout), start_date, end_date
+        )
         total_posts += len(posts)
         if not posts:
-            blocks.append(f"r/{sub}: <no posts found mentioning {ticker.upper()} in the past 7 days>")
+            blocks.append(
+                f"r/{sub}: <no posts found mentioning {ticker.upper()} in the past 7 days>"
+            )
             continue
 
         via_rss = any(p.get("source") == "rss" for p in posts)
@@ -288,9 +304,7 @@ def fetch_reddit_posts(
             score = p.get("score")
             comments = p.get("num_comments")
             created = p.get("created_utc")
-            created_str = (
-                time.strftime("%Y-%m-%d", time.gmtime(created)) if created else "?"
-            )
+            created_str = time.strftime("%Y-%m-%d", time.gmtime(created)) if created else "?"
             # Score / comment counts are absent on the RSS fallback path —
             # show them only when present rather than printing fake zeros.
             meta = created_str
@@ -300,8 +314,7 @@ def fetch_reddit_posts(
             if len(selftext) > 240:
                 selftext = selftext[:240] + "…"
             lines.append(
-                f"  [{meta}] {title}"
-                + (f"\n    body excerpt: {selftext}" if selftext else "")
+                f"  [{meta}] {title}" + (f"\n    body excerpt: {selftext}" if selftext else "")
             )
         blocks.append("\n".join(lines))
 

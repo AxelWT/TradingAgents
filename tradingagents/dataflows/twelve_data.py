@@ -437,7 +437,11 @@ def get_news(
     data = _request("news", params)
 
     if not isinstance(data, list) or not data:
-        return f"No news found for '{canonical}' between {start_date} and {end_date}"
+        raise NoMarketDataError(
+            ticker,
+            canonical,
+            f"no news from Twelve Data between {start_date} and {end_date}",
+        )
 
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
@@ -468,7 +472,11 @@ def get_news(
         count += 1
 
     if count == 0:
-        return f"No news found for '{canonical}' between {start_date} and {end_date}"
+        raise NoMarketDataError(
+            ticker,
+            canonical,
+            f"no news in date range {start_date} to {end_date} from Twelve Data",
+        )
 
     return f"## {canonical} News, from {start_date} to {end_date}:\n\n" + news_str
 
@@ -498,7 +506,11 @@ def get_global_news(
     data = _request("news", params)
 
     if not isinstance(data, list) or not data:
-        return f"No global news found for {curr_date}"
+        raise NoMarketDataError(
+            curr_date,
+            curr_date,
+            f"no global news from Twelve Data ending {curr_date}",
+        )
 
     news_str = ""
     count = 0
@@ -519,7 +531,11 @@ def get_global_news(
         count += 1
 
     if count == 0:
-        return f"No global news found for {curr_date}"
+        raise NoMarketDataError(
+            curr_date,
+            curr_date,
+            "no global news in date range from Twelve Data",
+        )
 
     return f"## Global News, from {start_dt.strftime('%Y-%m-%d')} to {curr_date}:\n\n" + news_str
 
