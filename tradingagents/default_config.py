@@ -157,10 +157,15 @@ DEFAULT_CONFIG = _apply_env_overrides(
         # macro/global-news calls to CN-specific vendors (a_stock / china_macro).
         "market_vendors": {
             "us": {
-                "core_stock_apis": "yfinance,alpha_vantage",
-                "technical_indicators": "yfinance,alpha_vantage",
-                "fundamental_data": "yfinance,alpha_vantage",
-                "news_data": "yfinance,alpha_vantage",
+                # Twelve Data is the primary US vendor (free tier 8/min, 800/day,
+                # covers OHLCV/indicators/fundamentals/statements/news). yfinance
+                # and alpha_vantage are fallbacks for when Twelve Data is
+                # rate-limited or lacks coverage (e.g. insider transactions,
+                # which Twelve Data gates behind a paid plan).
+                "core_stock_apis": "twelvedata,yfinance,alpha_vantage",
+                "technical_indicators": "twelvedata,yfinance,alpha_vantage",
+                "fundamental_data": "twelvedata,yfinance,alpha_vantage",
+                "news_data": "twelvedata,yfinance,alpha_vantage",
                 "macro_data": "fred",  # Options: fred (needs FRED_API_KEY)
                 "prediction_markets": "polymarket",  # Options: polymarket (keyless)
             },

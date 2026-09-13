@@ -164,7 +164,7 @@ class TestMarketAwareRouting(unittest.TestCase):
     def test_get_vendor_resolves_by_market(self):
         self.assertEqual(
             interface.get_vendor("core_stock_apis", market="us"),
-            "yfinance,alpha_vantage",
+            "twelvedata,yfinance,alpha_vantage",
         )
         self.assertEqual(
             interface.get_vendor("core_stock_apis", market="cn"),
