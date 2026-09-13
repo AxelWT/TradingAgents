@@ -240,8 +240,10 @@ def route_to_vendor(method: str, *args, **kwargs):
 
         try:
             return impl_func(*args, **kwargs)
-        except VendorRateLimitError:
+        except VendorRateLimitError as e:
             logger.warning("Vendor %r rate-limited for %s; trying next vendor.", vendor, method)
+            if first_error is None:
+                first_error = e  # Surface it if no other vendor can serve the call.
             continue
         except VendorNotConfiguredError as e:
             logger.warning("Vendor %r not configured for %s; trying next vendor.", vendor, method)
@@ -290,13 +292,30 @@ def route_to_vendor(method: str, *args, **kwargs):
     # No vendor returned data and none reported clean "no data" — surface the
     # first real error (e.g. the primary vendor's network failure). Optional
     # enrichment categories degrade to a sentinel instead, so flavour data can't
-    # abort the run.
+    # abort the run. Rate-limit-only failures (all vendors rate-limited, no
+    # hard "no data" verdict) also degrade to a sentinel for mandatory
+    # categories — a transient throttle shouldn't crash the entire analysis
+    # when the agent can proceed (without fabricating data) and the caller can
+    # retry.
     if first_error is not None:
         if category in OPTIONAL_CATEGORIES:
             logger.warning("Optional %s unavailable for %s: %s", category, method, first_error)
             return (
                 f"DATA_UNAVAILABLE: optional {category} could not be retrieved "
                 f"({first_error}). Proceed without it; do not fabricate values."
+            )
+        if isinstance(first_error, VendorRateLimitError):
+            logger.warning(
+                "All vendors rate-limited for %s %s; returning sentinel so the "
+                "agent can proceed without fabricating data. Retry later.",
+                method,
+                args[0] if args else "",
+            )
+            return (
+                f"NO_DATA_AVAILABLE: All vendors rate-limited for '{method}'. "
+                f"The data source is temporarily throttled. Do not estimate or "
+                f"fabricate values — report that data is temporarily unavailable "
+                f"and retry later."
             )
         raise first_error
 
